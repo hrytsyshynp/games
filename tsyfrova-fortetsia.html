@@ -112,6 +112,20 @@ function codeSig(g,score,dm,name){
   let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
   const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
 }
+/* Обов'язкове ім'я учня: без нього код результату неможливо перевірити */
+function requireName(){
+  const inp=document.getElementById('pname'); if(!inp) return null;
+  const v=(inp.value||'').replace(/\s+/g,' ').trim();
+  let msg=document.getElementById('pnameErr');
+  if(!msg){ msg=document.createElement('div'); msg.id='pnameErr'; msg.setAttribute('role','alert');
+    msg.style.cssText='color:#e5484d;font-size:13px;font-weight:600;margin-top:6px;font-family:inherit';
+    (inp.closest('label')||inp).insertAdjacentElement('afterend',msg);
+    inp.addEventListener('input',()=>{ msg.textContent=''; inp.style.outline=''; }); }
+  if(!/\p{L}.*\p{L}/u.test(v) || v.length<3){
+    msg.textContent='⚠ Введи своє ім’я та клас — без цього вчитель не зможе перевірити твій результат.';
+    inp.style.outline='2px solid #e5484d'; inp.focus(); return null; }
+  msg.textContent=''; inp.style.outline=''; return v;
+}
 function makeCode(g,score,name){
   const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
   return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
@@ -313,7 +327,7 @@ function startScreen(){
     ${rulesHTML().replace(/<h2>.*?<\/h2>/,'')}
     <p><label>Твоє ім’я та клас (для результату):<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Олена К., 10-А"></label></p>`,
     [{text:'Почати гру', primary:true, onClick:()=>{
-      S.player = ($('pname').value||'').trim() || 'Гравець';
+      { const _n=requireName(); if(!_n) return; S.player=_n; }
       closeModal(); beginWaveIntro();
     }}]);
   setTimeout(()=>{ const p=$('pname'); if(p) p.focus(); },50);
