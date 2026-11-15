@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Доступ за посиланням — симулятор хмарного сховища</title>
+<style>
+  :root{
+    --bg:#f7f4ff; --card:#fff; --line:#e6defa; --text:#24193f; --muted:#7a6f96;
+    --acc:#7c4dff; --acc2:#ff5ca8; --ok:#14a36b; --mid:#e6a400; --bad:#e2445c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+       background:radial-gradient(900px 400px at 85% -100px,#ffd6ec,transparent),radial-gradient(900px 500px at 0 -120px,#dcd0ff,transparent),var(--bg)}
+  .wrap{max-width:820px;margin:0 auto;padding:14px}
+  header{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}
+  header h1{margin:0;font-size:20px}
+  header .sub{font-size:12.5px;color:var(--muted)}
+  .stars{margin-left:auto;font-size:14px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:5px 12px}
+  .task{background:linear-gradient(135deg,var(--acc),#a17bff);color:#fff;border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:0 10px 30px rgba(124,77,255,.25)}
+  .task .k{font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.6px}
+  .task .t{font-size:16.5px;line-height:1.45;margin-top:4px}
+  .file{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+  .file .ic{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+  .file .nm{font-weight:600}.file .meta{font-size:12.5px;color:var(--muted)}
+  .dlg{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 12px 34px rgba(36,25,63,.08)}
+  .dlg h3{margin:0 0 10px;font-size:16px}
+  .lbl{font-size:12.5px;color:var(--muted);margin:12px 0 6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .people{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font:inherit;font-size:13.5px;border:1px solid var(--line);background:#fbf9ff;border-radius:20px;padding:6px 11px;cursor:pointer}
+  .chip.on{background:#efe8ff;border-color:var(--acc);color:#4a26c4;font-weight:600}
+  .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .opt{font:inherit;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;cursor:pointer;font-size:13.5px;line-height:1.35}
+  .opt b{display:block;font-size:14px;margin-bottom:2px}
+  .opt.on{border:2px solid var(--acc);background:#f4efff;padding:9px}
+  .opt:disabled,.chip:disabled{cursor:default}
+  .row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .btn{font:inherit;font-size:14.5px;border-radius:22px;padding:9px 16px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .btn.primary{background:linear-gradient(135deg,var(--acc),#9a6bff);border:0;color:#fff;font-weight:600}
+  .fb{margin-top:12px;padding:12px 14px;border-radius:14px;font-size:14.5px;line-height:1.5}
+  .fb.best{background:#ddf6ea}.fb.ok{background:#fdf1cf}.fb.bad{background:#fde0e5}
+  .who{font-size:13px;margin-top:8px;color:var(--muted)}
+  .choice{display:block;width:100%;text-align:left;margin:8px 0;padding:11px 13px;border-radius:14px;font:inherit;font-size:15px;background:#fff;border:1px solid var(--line);cursor:pointer}
+  .choice:hover:not(:disabled){border-color:var(--acc)}
+  .choice:disabled{opacity:.55;cursor:default}
+  .choice.picked{opacity:1;border-width:2px}
+  .choice.picked.best{border-color:var(--ok);background:#ddf6ea}.choice.picked.ok{border-color:var(--mid);background:#fdf1cf}.choice.picked.bad{border-color:var(--bad);background:#fde0e5}
+  input[type=text]{width:100%;font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--line)}
+  table.res{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  table.res td,table.res th{padding:7px 5px;border-bottom:1px solid var(--line);text-align:left}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:19px;border:1px dashed var(--acc);border-radius:10px;padding:6px 12px;display:inline-block;background:#f4efff}
+  .tag{font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600}
+  .tag.best{background:#ddf6ea;color:#0c6b45}.tag.ok{background:#fdf1cf;color:#7a5600}.tag.bad{background:#fde0e5;color:#a3132b}
+  .muted{color:var(--muted)}
+  p{line-height:1.55}
+  @media (max-width:600px){.opts{grid-template-columns:1fr}}
+  @media print{body{background:#fff}.row{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="logo">☁</div><div><h1>Доступ за посиланням</h1><div class="sub">Хмаринка · навчальний симулятор хмарного сховища</div></div><span class="stars" id="stars"></span></header>
+  <div id="main"></div>
+</div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати завдання й правила оцінювання.
+   Тема: «Автоматизоване створення й підтримка веб-ресурсів. Хмарні сервіси» (Тема 9.1).
+   Сервіс «Хмаринка» та всі люди вигадані.
+   Кожне завдання: файл, текст, функція check(cfg) → [kind, пояснення].
+   cfg.access: 'restricted' | 'school' | 'link';  cfg.role: 'viewer' | 'commenter' | 'editor';
+   cfg.people: масив ключів людей, яким надано доступ.
+   ===================================================================== */
+const PEOPLE = {
+  teacher:'👩‍🏫 Олена Петрівна (учителька)', head:'👨‍🏫 Андрій Іванович (класний керівник)',
+  iryna:'👧 Ірина', maks:'👦 Максим', olena:'🧒 Олена', org:'🏛 Оргкомітет олімпіади'
+};
+const ACCESS = {
+  restricted:['🔒 Обмежений','Бачать лише додані люди'],
+  school:['🏫 Усі в ліцеї','Будь-хто зі шкільним акаунтом'],
+  link:['🌐 Усі, хто має посилання','Будь-хто в інтернеті з посиланням']
+};
+const ROLES = {viewer:['👁 Читач','лише перегляд'], commenter:['💬 Коментатор','перегляд і коментарі'], editor:['✏️ Редактор','може змінювати й видаляти']};
+const has = (c,...k) => k.every(x=>c.people.includes(x));
+const only = (c,...k) => has(c,...k) && c.people.length===k.length;
+
+const TASKS = [
+ {file:'Презентація_Енергозбереження.pptx', ic:'📊', col:'#ffe3c7', size:'4,2 МБ',
+  task:'Надішли презентацію вчительці на перевірку. Вона хоче залишити зауваження прямо на слайдах.',
+  check:c=>{
+    if (c.access==='link' && c.role==='editor') return ['bad','Будь-хто з посиланням зможе змінити або видалити твою презентацію.'];
+    if (!has(c,'teacher') && c.access==='restricted') return ['bad','Учительку не додано — вона не відкриє файл.'];
+    if (c.access!=='restricted') return ['ok','Учителька відкриє файл, але так само зможуть і всі, кому перешлють посилання. Для перевірки досить обмеженого доступу.'];
+    if (c.people.length>1) return ['ok','Учителька отримає доступ, але ти відкрив файл і людям, яким він не потрібен.'];
+    if (c.role==='commenter') return ['best','Обмежений доступ лише для вчительки з роллю «Коментатор»: вона залишить зауваження, але не змінить твою роботу.'];
+    if (c.role==='editor') return ['ok','Працює, але редактор може випадково змінити текст. Для зауважень вистачить ролі «Коментатор».'];
+    return ['ok','Учителька побачить презентацію, але не зможе залишити коментарі. Краще — «Коментатор».'];
+  }},
+ {file:'Оголошення_Ярмарок.pdf', ic:'📢', col:'#d8f4ff', size:'0,8 МБ',
+  task:'Шкільний ярмарок у суботу! Поділися оголошенням так, щоб його могли відкрити всі учні й батьки, навіть без шкільного акаунта.',
+  check:c=>{
+    if (c.role==='editor') return ['bad','Редагувати оголошення зможе будь-хто — хтось обов’язково «пожартує». Публічні файли відкривають лише на перегляд.'];
+    if (c.access==='link') return ['best','Публічне оголошення без персональних даних — саме той випадок, коли доречний доступ за посиланням для читання.'];
+    if (c.access==='school') return ['ok','Учні відкриють, а батьки без шкільного акаунта — ні.'];
+    return ['bad','Обмежений доступ — оголошення побачать лише кілька доданих людей.'];
+  }},
+ {file:'Проєкт_Сонячна_станція.docx', ic:'📝', col:'#e3e9ff', size:'1,1 МБ',
+  task:'Ви з Іриною та Максимом пишете спільний проєкт. Обоє мають повноцінно працювати з документом.',
+  check:c=>{
+    if (c.access==='link' && c.role==='editor') return ['bad','Редагування для всіх, хто має посилання: проєкт може зіпсувати будь-хто, кому потрапить лінк.'];
+    if (!has(c,'iryna','maks') && c.access==='restricted') return ['bad','Додано не всіх учасників групи — хтось не зможе працювати.'];
+    if (c.role!=='editor') return ['bad','Учасникам групи потрібна роль «Редактор», інакше вони не зможуть писати свої розділи.'];
+    if (c.access!=='restricted') return ['ok','Група працюватиме, але документ відкритий ширше, ніж потрібно.'];
+    if (!only(c,'iryna','maks')) return ['ok','Група працюватиме, але доступ отримали й сторонні люди.'];
+    return ['best','Обмежений доступ, лише учасники проєкту, роль «Редактор» — ідеально для спільної роботи.'];
+  }},
+ {file:'Учасники_екскурсії.xlsx', ic:'📋', col:'#dff7e6', size:'0,1 МБ',
+  task:'У таблиці — імена, телефони батьків і дати народження 25 учнів. Класний керівник просить надіслати її йому.',
+  check:c=>{
+    if (c.access==='link') return ['bad','Таблиця з персональними даними 25 дітей доступна будь-кому в інтернеті з посиланням. Це серйозне порушення захисту персональних даних.'];
+    if (c.access==='school') return ['bad','Тепер дані всіх учнів може відкрити будь-хто з ліцею. Персональні дані — лише тим, кому вони потрібні.'];
+    if (!has(c,'head')) return ['bad','Класного керівника не додано — він не отримає таблицю.'];
+    if (c.people.length>1) return ['bad','Персональні дані учнів отримали люди, яким вони не потрібні.'];
+    return ['best','Персональні дані — тільки класному керівнику, з обмеженим доступом. Так і має бути.'];
+  }},
+ {file:'Скан_свідоцтва_про_народження.jpg', ic:'🪪', col:'#ffe0e6', size:'2,3 МБ',
+  task:'Для реєстрації на олімпіаду оргкомітет просить надіслати скан свідоцтва про народження.',
+  check:c=>{
+    if (c.access!=='restricted') return ['bad','Скан документа — одні з найцінніших даних для шахраїв. Його ніколи не відкривають «усім»: ні за посиланням, ні всій школі.'];
+    if (!only(c,'org')) return has(c,'org') ? ['bad','Скан документа отримали зайві люди.'] : ['bad','Оргкомітет не отримає документ.'];
+    if (c.role!=='viewer') return ['ok','Доступ обмежено правильно, але для документа досить ролі «Читач».'];
+    return ['best','Тільки оргкомітет, тільки перегляд. Після реєстрації доступ варто закрити.'];
+  }},
+ {file:'Фото_з_дня_народження.zip', ic:'🎉', col:'#fff2c6', size:'86 МБ',
+  task:'Поділися фото з вечірки з друзями, які там були: Іриною, Максимом та Оленою.',
+  check:c=>{
+    if (c.role==='editor') return ['bad','Редактор може видалити або замінити фото. Друзям досить перегляду.'];
+    if (c.access==='school') return ['bad','Фото друзів побачить уся школа. Публікувати чужі фото без згоди не можна.'];
+    if (c.access==='link') return ['ok','Друзі отримають фото, але посилання легко переслати далі — і ваші фото побачать сторонні.'];
+    if (!has(c,'iryna','maks','olena')) return ['ok','Когось із друзів не додано.'];
+    if (!only(c,'iryna','maks','olena')) return ['bad','Особисті фото з вечірки отримали люди, яких там не було.'];
+    return ['best','Лише ті, хто був на фото, і лише перегляд — найкращий варіант.'];
+  }}
+];
+
+const AUDIT = {
+  task:'Минув місяць. Олімпіаду завершено, проєкт про сонячну станцію здано. Час навести лад у доступах.',
+  choices:[
+   {t:'Відкрити «Спільні файли», закрити доступ до скану документа і до завершеного проєкту', kind:'best',
+    why:'Доступ потрібен лише на час роботи. Регулярна «ревізія» доступів — звичка, яка рятує від витоків.'},
+   {t:'Нічого не робити — усі свої', kind:'bad',
+    why:'Доступи, про які забули, — одна з найчастіших причин витоків з хмарних сховищ.'},
+   {t:'Закрити доступ тільки до скану документа', kind:'ok',
+    why:'Найважливіше зроблено. Але завершений проєкт теж не потребує відкритого редагування.'}
+  ]};
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+const STEPS = () => TASKS.length + 1;
+function fresh(){ return {player:'',i:0,res:[],t0:Date.now()}; }
+function stars(){
+  const sc=S.res.reduce((s,r)=>s+(r.kind==='best'?2:r.kind==='ok'?1:0),0);
+  $('stars').textContent = S.i<STEPS() ? `Завдання ${Math.min(S.i+1,STEPS())} з ${STEPS()} · ⭐ ${sc}` : `⭐ ${sc}`;
+}
+
+function start(){
+  S=fresh(); $('stars').textContent='';
+  $('main').innerHTML=`<div class="task"><div class="k">Ласкаво просимо</div><div class="t">У тебе в «Хмаринці» шість файлів, і кожен треба комусь передати. Обирай, <b>кому</b> дати доступ, <b>який</b> загальний доступ увімкнути і з <b>якою роллю</b>.</div></div>
+   <div class="dlg"><p>Правильних налаштувань не одне, але найкращим буде те, що дає людям <b>рівно стільки доступу, скільки потрібно</b>, і не відкриває персональні дані стороннім.</p>
+   <label>Твоє ім’я та клас:<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Софія Р., 11-А"></label>
+   <div class="row"><button class="btn primary" id="go">Відкрити Хмаринку ☁</button></div></div>`;
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; S.t0=Date.now(); step(); };
+}
+
+function step(){
+  stars();
+  if (S.i<TASKS.length) return share(TASKS[S.i]);
+  if (S.i===TASKS.length) return audit();
+  finish();
+}
+
+function share(t){
+  const cfg={access:'restricted',role:'viewer',people:[]};
+  $('main').innerHTML=`<div class="task"><div class="k">Завдання ${S.i+1}</div><div class="t">${esc(t.task)}</div></div>
+    <div class="file"><div class="ic" style="background:${t.col}">${t.ic}</div><div><div class="nm">${esc(t.file)}</div><div class="meta">Власник: ти · ${t.size}</div></div></div>
+    <div class="dlg"><h3>🔗 Поділитися «${esc(t.file)}»</h3>
+      <div class="lbl">Додати людей</div><div class="people" id="ppl">${Object.keys(PEOPLE).map(k=>`<button class="chip" data-k="${k}">${PEOPLE[k]}</button>`).join('')}</div>
+      <div class="lbl">Загальний доступ</div><div class="opts" id="acc">${Object.keys(ACCESS).map(k=>`<button class="opt ${k==='restricted'?'on':''}" data-k="${k}"><b>${ACCESS[k][0]}</b>${ACCESS[k][1]}</button>`).join('')}</div>
+      <div class="lbl">Роль</div><div class="opts" id="rol">${Object.keys(ROLES).map(k=>`<button class="opt ${k==='viewer'?'on':''}" data-k="${k}"><b>${ROLES[k][0]}</b>${ROLES[k][1]}</button>`).join('')}</div>
+      <div class="who" id="who"></div>
+      <div class="row"><button class="btn primary" id="send">Готово</button></div><div id="fb"></div></div>`;
+  const who=()=>{ $('who').textContent = 'Доступ матимуть: ' + (cfg.access==='link'?'будь-хто з посиланням':cfg.access==='school'?'усі зі шкільним акаунтом':cfg.people.length?cfg.people.map(k=>PEOPLE[k].replace(/^\S+\s/,'')).join(', '):'лише ти'); };
+  document.querySelectorAll('#ppl .chip').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; const i=cfg.people.indexOf(k); i<0?cfg.people.push(k):cfg.people.splice(i,1); b.classList.toggle('on'); who(); });
+  const pick=(box,key)=>document.querySelectorAll(`#${box} .opt`).forEach(b=>b.onclick=()=>{ cfg[key]=b.dataset.k; document.querySelectorAll(`#${box} .opt`).forEach(x=>x.classList.toggle('on',x===b)); who(); });
+  pick('acc','access'); pick('rol','role'); who();
+  $('send').onclick=()=>{
+    const [kind,why]=t.check(cfg);
+    S.res[S.i]={kind,file:t.file,cfg:{...cfg,people:cfg.people.slice()}};
+    document.querySelectorAll('.dlg button.chip, .dlg button.opt').forEach(b=>b.disabled=true);
+    $('send').parentNode.remove();
+    const head=kind==='best'?'✅ Чудово!':kind==='ok'?'🟡 Можна краще.':'❌ Ризиковано.';
+    $('fb').innerHTML=`<div class="fb ${kind}"><b>${head}</b> ${esc(why)}</div><div class="row"><button class="btn primary" id="nx">Далі →</button></div>`;
+    stars(); $('nx').onclick=()=>{ S.i++; step(); window.scrollTo({top:0,behavior:'smooth'}); }; $('nx').focus();
+  };
+}
+
+function audit(){
+  $('main').innerHTML=`<div class="task"><div class="k">Ревізія доступів</div><div class="t">${esc(AUDIT.task)}</div></div>
+   <div class="dlg"><h3>👥 Спільні файли</h3>
+    <table class="res"><tr><th>Файл</th><th>Доступ</th><th></th></tr>${S.res.map(r=>`<tr><td>${esc(r.file)}</td><td>${ACCESS[r.cfg.access][0]} · ${ROLES[r.cfg.role][0]}</td><td><span class="tag ${r.kind}">${r.kind==='best'?'ок':r.kind==='ok'?'увага':'ризик'}</span></td></tr>`).join('')}</table>
+    <div id="ch"></div><div id="fb"></div></div>`;
+  AUDIT.choices.map((c,k)=>k).sort(()=>Math.random()-.5).forEach(k=>{
+    const c=AUDIT.choices[k], b=document.createElement('button'); b.className='choice'; b.textContent=c.t;
+    b.onclick=()=>{ document.querySelectorAll('.choice').forEach(x=>x.disabled=true); b.classList.add('picked',c.kind);
+      S.res[S.i]={kind:c.kind,file:'Ревізія доступів',cfg:null}; stars();
+      const head=c.kind==='best'?'✅ Чудово!':c.kind==='ok'?'🟡 Можна краще.':'❌ Ризиковано.';
+      $('fb').innerHTML=`<div class="fb ${c.kind}"><b>${head}</b> ${esc(c.why)}</div><div class="row"><button class="btn primary" id="nx">Підсумок →</button></div>`;
+      $('nx').onclick=()=>{ S.i++; step(); }; $('nx').focus(); };
+    $('ch').appendChild(b);
+  });
+}
+
+function finish(){
+  const best=S.res.filter(r=>r.kind==='best').length, ok=S.res.filter(r=>r.kind==='ok').length, bad=S.res.filter(r=>r.kind==='bad').length;
+  const score=best*100+ok*50, max=STEPS()*100, pct=Math.round(score/max*100);
+  const chk=(score*19+S.player.length*11+bad)%97, code=makeCode('ДП',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const title=pct>=85?'🏆 Хмарний профі':pct>=60?'☁ Упевнений користувач':'⚠️ Твої файли бачать зайві люди';
+  const summary=`Доступ за посиланням — ${S.player}, ${date}\nНайкращих рішень: ${best}/${STEPS()}; прийнятних: ${ok}; ризикованих: ${bad}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  $('main').innerHTML=`<div class="task"><div class="k">Підсумок</div><div class="t">${title}</div></div>
+   <div class="dlg"><p><b>${esc(S.player)}</b> · ${date}</p>
+    <table class="res">${S.res.map(r=>`<tr><td>${esc(r.file)}</td><td><span class="tag ${r.kind}">${r.kind==='best'?'найкраще':r.kind==='ok'?'прийнятно':'ризиковано'}</span></td></tr>`).join('')}
+     <tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td><b>Рахунок</b></td><td>${score} з ${max} (${pct}%)</td></tr></table>
+    <p>Код результату для вчителя: <span class="code">${code}</span></p>
+    <h3>Правила хмари</h3>
+    <p>🔒 За замовчуванням — обмежений доступ · 🌐 «Усі з посиланням» — лише для публічних файлів без персональних даних · 💬 Перевірка — «Коментатор», спільна робота — «Редактор», усе інше — «Читач» · 🪪 Документи й таблиці з даними людей — тільки адресату · 🧹 Завершив роботу — закрий доступ.</p>
+    <div class="row"><button class="btn" id="copy">📋 Копіювати результат</button><button class="btn" id="prn">🖨 Друк / PDF</button><button class="btn primary" id="again">Ще раз</button></div></div>`;
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати');}catch(err){b.textContent='Не вдалося скопіювати';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=start;
+}
+
+start();
+</script>
+</body>
+</html>

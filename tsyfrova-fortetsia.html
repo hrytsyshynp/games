@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Цифрова фортеця — гра з кібербезпеки</title>
+<style>
+  :root{
+    --bg:#0e1424; --panel:#162036; --panel2:#1d2a47; --line:#2b3a5e;
+    --text:#e8eefc; --muted:#9aa8c7; --accent:#4fd1a5; --warn:#ffb547; --bad:#ff6b6b; --blue:#5b9dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#1f2d52,var(--bg));color:var(--text);
+       font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:1000px;margin:0 auto;padding:12px}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px}
+  h1{font-size:22px;margin:0;letter-spacing:.3px}
+  h1 span{color:var(--accent)}
+  .stats{display:flex;gap:8px;flex-wrap:wrap}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:14px;white-space:nowrap}
+  .stat b{font-size:16px}
+  .hpbar{width:120px;height:10px;background:#2a3350;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+  .hpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--bad),var(--warn),var(--accent));width:100%;transition:width .3s}
+  .controls{display:flex;gap:6px;flex-wrap:wrap}
+  button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+  button:hover{border-color:var(--blue)}
+  button.primary{background:var(--accent);color:#06281d;border-color:var(--accent);font-weight:700}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  #startWave{animation:pulse 1.4s infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 6px rgba(79,209,165,.25)}}
+  .board{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b1120}
+  canvas{display:block;width:100%;height:auto;touch-action:manipulation;cursor:pointer}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .tool{display:flex;align-items:center;gap:8px;padding:8px 10px;min-width:150px;text-align:left}
+  .tool .ic{font-size:24px}
+  .tool small{display:block;color:var(--muted);font-size:12px}
+  .tool.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(79,209,165,.35) inset}
+  .tool.locked{display:none}
+  .info{margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--muted);min-height:44px}
+  .info b{color:var(--text)}
+  .tag{display:inline-block;background:#24345c;border-radius:6px;padding:1px 7px;margin:2px 3px 2px 0;color:var(--text);font-size:13px}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(5,9,20,.78);display:none;align-items:center;justify-content:center;padding:14px;z-index:10}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:620px;width:100%;max-height:92vh;overflow:auto;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal h2{margin:0 0 10px;font-size:21px}
+  .modal p{line-height:1.5;margin:8px 0}
+  .modal .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:flex-end}
+  .card{display:flex;gap:12px;align-items:flex-start;background:var(--panel2);border-radius:12px;padding:12px;margin:10px 0}
+  .card .big{font-size:36px;line-height:1}
+  .card h3{margin:0 0 4px;font-size:17px}
+  .card p{margin:4px 0;font-size:14.5px}
+  .opt{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px}
+  .opt.right{background:#1f5a45;border-color:var(--accent)}
+  .opt.wrong{background:#5a2626;border-color:var(--bad)}
+  input[type=text],input[type=password]{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0d1527;color:var(--text)}
+  .meter{height:12px;border-radius:8px;background:#2a3350;overflow:hidden;margin:10px 0}
+  .meter i{display:block;height:100%;width:0;transition:width .25s,background .25s}
+  ul.checks{list-style:none;padding:0;margin:6px 0;font-size:14px}
+  ul.checks li{margin:3px 0}
+  .warnbox{background:#3a2e14;border:1px solid #6e5520;border-radius:10px;padding:8px 10px;font-size:13.5px;color:#ffd99a}
+  table.res{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px solid var(--line)}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:20px;background:#0d1527;border:1px dashed var(--accent);border-radius:10px;padding:8px 12px;display:inline-block;letter-spacing:1px}
+  .muted{color:var(--muted)}
+  @media (max-width:600px){h1{font-size:18px}.tool{min-width:calc(50% - 4px)}.hpbar{width:70px}}
+  @media print{
+    body{background:#fff;color:#000}
+    .wrap{display:none}
+    .overlay{position:static;background:none;display:block;padding:0}
+    .modal{box-shadow:none;border:1px solid #999;background:#fff;color:#000;max-height:none}
+    .modal .row{display:none}
+    .card{background:#f2f2f2}
+    table.res td{border-color:#ccc}
+    .code{border-color:#000;background:#fff}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🏰 Цифрова <span>фортеця</span></h1>
+    <div class="stats">
+      <div class="stat">Хвиля <b id="sWave">1</b>/<span id="sWaves">8</span></div>
+      <div class="stat">💠 <b id="sCoins">0</b></div>
+      <div class="stat">🛡 Захищеність <b id="sHp">100</b><span class="hpbar"><i id="hpFill"></i></span></div>
+    </div>
+    <div class="controls">
+      <button id="startWave" class="primary">▶ Почати хвилю</button>
+      <button id="pauseBtn" title="Пауза (пробіл)">Пауза</button>
+      <button id="speedBtn" title="Швидкість">×1</button>
+      <button id="helpBtn" title="Правила">❓</button>
+    </div>
+  </header>
+
+  <div class="board"><canvas id="cv" width="720" height="320"></canvas></div>
+
+  <div class="toolbar" id="toolbar"></div>
+  <div class="info" id="info">Обери захист унизу і натисни на клітинку поля, щоб його поставити.</div>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ ГРИ — тут учитель може змінювати тексти, ціни та хвилі
+   ===================================================================== */
+const CFG = {
+  startCoins: 220,        // стартовий бюджет
+  integrity: 100,         // «захищеність» даних
+  incomeEvery: 3,         // кожні N секунд хвилі ...
+  incomeAmount: 5,        // ... нараховується стільки кібербалів
+  waveBonus: 40,          // бонус за пройдену хвилю
+  weakMult: 0.1,          // неправильний захист завдає лише 10% шкоди
+  hpGrowth: 0.06          // загрози стають міцнішими з кожною хвилею
+};
+
+// Ряди поля — це твої акаунти та пристрої
+const LANES = [
+  {icon:'📧', name:'Пошта'},
+  {icon:'💬', name:'Соцмережа'},
+  {icon:'🏦', name:'Банкінг'},
+  {icon:'💻', name:'Ноутбук'}
+];
+
+// Засоби захисту. counters — від яких загроз захист реально допомагає
+const DEFENSES = {
+  pass:   {name:'Складний пароль', icon:'🔐', cost:50, dmg:20, rate:0.8, color:'#5b9dff',
+           counters:['brute','dict'],
+           desc:'Довгий пароль (12+ символів) або фраза з кількох випадкових слів. Перебрати чи вгадати такий пароль за розумний час неможливо.'},
+  twofa:  {name:'Двофакторна автентифікація', icon:'📱', cost:75, dmg:22, rate:0.9, color:'#4fd1a5',
+           counters:['brute','stuff','phish'],
+           desc:'Другий крок входу: код із застосунку чи ключ. Навіть якщо пароль став відомим, без твого телефона в акаунт не зайти.'},
+  manager:{name:'Менеджер паролів', icon:'🗝️', cost:60, dmg:20, rate:0.7, color:'#b48cff',
+           counters:['dict','stuff'],
+           desc:'Генерує й пам’ятає унікальний складний пароль для кожного сайту. Витік одного сайту не відкриває інші.'},
+  aware:  {name:'Критичне мислення', icon:'🧠', cost:50, dmg:22, rate:0.7, color:'#ffd166',
+           counters:['phish','trojan'],
+           desc:'Звичка зупинитися й перевірити: хто пише, куди веде посилання, звідки файл. Головний захист від обману.'},
+  av:     {name:'Антивірус', icon:'🛡️', cost:70, dmg:30, rate:1.0, color:'#ff8fab',
+           counters:['trojan','ransom'],
+           desc:'Перевіряє файли й програми, блокує відоме шкідливе ПЗ ще до запуску.'},
+  update: {name:'Оновлення ПЗ', icon:'🔄', cost:60, dmg:26, rate:0.9, color:'#7ee0ff',
+           counters:['exploit','trojan','ransom'],
+           desc:'Оновлення закривають «дірки» (вразливості) у системі та програмах, через які проникає шкідливе ПЗ.'},
+  backup: {name:'Резервна копія', icon:'💾', cost:80, dmg:45, rate:1.4, color:'#ffa94d',
+           counters:['ransom'],
+           desc:'Копія важливих файлів на окремому носії чи в хмарі. Якщо файли зашифрують або знищать — ти просто відновиш їх.'}
+};
+
+// Загрози
+const THREATS = {
+  brute:  {name:'Перебір паролів', icon:'🔨', hp:60, speed:40, reward:10, damage:8,
+           desc:'Програма автоматично пробує мільйони комбінацій за секунду. Короткі паролі на кшталт «12345678» падають майже миттєво.'},
+  dict:   {name:'Вгадування за словником', icon:'📖', hp:90, speed:35, reward:12, damage:8,
+           desc:'Перебираються найпопулярніші паролі, слова, імена та дати: «qwerty», «password», «Ivan2008». Особисті дані в паролі — погана ідея.'},
+  stuff:  {name:'Злитий пароль', icon:'🗂️', hp:110, speed:45, reward:15, damage:10,
+           desc:'Якщо базу паролів одного сайту викрали, ці пари «логін + пароль» пробують на інших сайтах. Небезпечно, коли пароль однаковий усюди.'},
+  phish:  {name:'Фішинг', icon:'🎣', hp:70, speed:70, reward:14, damage:12,
+           desc:'Обман, щоб людина сама віддала пароль чи код: фальшиві сторінки входу, «термінові» повідомлення. Швидкий і підступний.'},
+  trojan: {name:'Троян', icon:'🐴', hp:160, speed:30, reward:18, damage:15,
+           desc:'Шкідлива програма, замаскована під корисну: «безкоштовна» гра, кряк, «оновлення» з невідомого сайту.'},
+  exploit:{name:'Вразливість', icon:'🕳️', hp:120, speed:50, reward:16, damage:12,
+           desc:'Атака через відому помилку в застарілій програмі чи системі. Розробники вже випустили виправлення — але його не встановили.'},
+  ransom: {name:'Вимагач', icon:'🔒', hp:270, speed:22, reward:35, damage:20,
+           desc:'Шкідливе ПЗ шифрує твої файли й вимагає викуп. Найнадійніше рятує резервна копія — тоді файли просто відновлюються.'}
+};
+
+// Хвилі: [загроза, кількість, інтервал у секундах]
+// intro — нові загрози (показується пояснення), unlock — нові засоби захисту,
+// after — завдання після хвилі: 'password' або 'quiz'
+const WAVES = [
+  {intro:['brute'],  unlock:['pass','twofa'], groups:[['brute',6,2.6]], after:'password'},
+  {intro:['dict'],   unlock:['manager'],      groups:[['brute',4,2.2],['dict',5,2.4]]},
+  {intro:['stuff'],  unlock:[],               groups:[['dict',4,2.0],['stuff',5,2.2],['brute',4,1.8]], after:'quiz'},
+  {intro:['phish'],  unlock:['aware'],        groups:[['phish',6,1.9],['stuff',4,2.0]]},
+  {intro:['trojan'], unlock:['av'],           groups:[['trojan',5,2.6],['phish',5,1.7],['brute',5,1.3]], after:'password'},
+  {intro:['exploit'],unlock:['update'],       groups:[['exploit',6,2.0],['trojan',4,2.4],['dict',5,1.5]], after:'quiz'},
+  {intro:['ransom'], unlock:['backup'],       groups:[['ransom',3,5.0],['exploit',5,1.8],['phish',6,1.5]], after:'quiz'},
+  {intro:[],         unlock:[],               groups:[['ransom',4,3.8],['trojan',5,1.8],['stuff',5,1.6],['phish',5,1.4],['exploit',6,1.6]]}
+];
+
+// Питання між хвилями: answer — номер правильного варіанта (з 0)
+const QUIZ = [
+  {q:'Хтось дізнався твій пароль від пошти. Що не дасть йому увійти?',
+   a:['Двофакторна автентифікація','Антивірус на ноутбуці','Резервна копія фото'], answer:0,
+   why:'Друга перевірка (код у застосунку чи ключ) потрібна при кожному вході з нового пристрою — одного пароля замало.'},
+  {q:'Ти маєш однаковий пароль на 10 сайтах. Один сайт зламали. Що найімовірніше станеться?',
+   a:['Нічого, зламали ж тільки один сайт','Цей пароль спробують на інших сайтах','Пароль автоматично зміниться'], answer:1,
+   why:'Злиті паролі масово перевіряють на інших сервісах. Унікальний пароль для кожного сайту обмежує шкоду одним акаунтом.'},
+  {q:'Яке рішення найкраще допоможе, якщо вимагач зашифрував твої файли?',
+   a:['Заплатити викуп','Перевстановити браузер','Відновити файли з резервної копії'], answer:2,
+   why:'Викуп не гарантує повернення файлів. Регулярна копія на окремому носії чи в хмарі дозволяє відновитися без втрат.'},
+  {q:'Навіщо встановлювати оновлення системи та програм?',
+   a:['Вони закривають відомі вразливості','Тільки заради нових емодзі','Щоб звільнити місце на диску'], answer:0,
+   why:'Більшість атак використовують давно відомі помилки, для яких уже є виправлення.'},
+  {q:'Який пароль найнадійніший?',
+   a:['Qwerty123!','Ivan2008','Жовтий-трамвай-співає-у-хмарах'], answer:2,
+   why:'Довга фраза з випадкових слів легко запам’ятовується і дуже стійка до перебору. Імена, дати та «клавіатурні» шаблони вгадуються першими.'},
+  {q:'Тобі телефонують «зі служби підтримки» і просять назвати код, що прийшов у SMS. Що робити?',
+   a:['Назвати, якщо голос упевнений','Нікому не повідомляти код і завершити розмову','Назвати лише половину коду'], answer:1,
+   why:'Справжня служба підтримки ніколи не просить коди підтвердження. Код — лише для тебе.'},
+  {q:'Звідки безпечніше встановлювати програми?',
+   a:['З офіційного магазину чи сайту розробника','З першого посилання в пошуку «скачати безкоштовно»','З файлу, який надіслав незнайомець'], answer:0,
+   why:'Неофіційні «безкоштовні» версії — найпоширеніший спосіб поширення троянів.'},
+  {q:'Друг попросив твій пароль «на хвилинку». Як правильно вчинити?',
+   a:['Дати, адже це друг','Не давати; за потреби допомогти інакше','Дати й одразу забути'], answer:1,
+   why:'Пароль — особисті дані. Передаючи його, ти втрачаєш контроль над акаунтом і тим, що з нього роблять.'},
+  {q:'Що з переліку найкраще підходить як друга перевірка входу (2FA)?',
+   a:['Дата народження','Код у застосунку-автентифікаторі','Відповідь «ім’я кота»'], answer:1,
+   why:'Дату народження чи кличку тварини легко знайти в соцмережах. Застосунок-автентифікатор прив’язаний до твого пристрою.'}
+];
+
+/* ===================================================================== */
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const CELL = 80, COLS = 9, ROWS = 4, W = cv.width, H = cv.height;
+const EMOJI = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+const $ = id => document.getElementById(id);
+
+let S; // стан гри
+function newState(){
+  return {
+    phase:'menu', wave:0, coins:CFG.startCoins, hp:CFG.integrity, player:'',
+    defs:[], threats:[], shots:[], floats:[], queue:[], waveTime:0, incomeT:0,
+    unlocked:new Set(), selected:null, paused:false, speed:1, hover:null,
+    quizUsed:new Set(),
+    st:{kills:0, hits:0, effHits:0, breaches:{}, quizOk:0, quizTotal:0, pwdBonus:0, pwdBest:'', wavesDone:0, built:0}
+  };
+}
+S = newState();
+
+/* ---------- панель захистів ---------- */
+function buildToolbar(){
+  const tb = $('toolbar'); tb.innerHTML = '';
+  for (const [k,d] of Object.entries(DEFENSES)){
+    const b = document.createElement('button');
+    b.className = 'tool' + (S.unlocked.has(k)?'':' locked') + (S.selected===k?' sel':'');
+    b.innerHTML = `<span class="ic">${d.icon}</span><span>${d.name}<small>💠 ${d.cost}</small></span>`;
+    b.disabled = S.coins < d.cost;
+    b.onclick = () => { S.selected = S.selected===k ? null : k; buildToolbar(); showInfo(); };
+    tb.appendChild(b);
+  }
+  const sell = document.createElement('button');
+  sell.className = 'tool' + (S.selected==='sell'?' sel':'');
+  sell.innerHTML = `<span class="ic">♻️</span><span>Прибрати<small>повертає 50%</small></span>`;
+  sell.onclick = () => { S.selected = S.selected==='sell'?null:'sell'; buildToolbar(); showInfo(); };
+  tb.appendChild(sell);
+}
+function showInfo(){
+  const el = $('info');
+  if (!S.selected){ el.innerHTML = 'Обери захист унизу і натисни на клітинку поля, щоб його поставити. Кожен захист зупиняє лише <b>свої</b> загрози — проти інших він майже безсилий.'; return; }
+  if (S.selected==='sell'){ el.innerHTML = 'Натисни на встановлений захист, щоб прибрати його й повернути половину вартості.'; return; }
+  const d = DEFENSES[S.selected];
+  el.innerHTML = `<b>${d.icon} ${d.name}</b> — ${d.desc}<br>Зупиняє: ${d.counters.map(t=>`<span class="tag">${THREATS[t].icon} ${THREATS[t].name}</span>`).join('')}`;
+}
+function updateHUD(){
+  $('sWave').textContent = Math.min(S.wave+1, WAVES.length);
+  $('sWaves').textContent = WAVES.length;
+  $('sCoins').textContent = Math.floor(S.coins);
+  $('sHp').textContent = Math.max(0,Math.ceil(S.hp));
+  $('hpFill').style.width = Math.max(0,S.hp)/CFG.integrity*100 + '%';
+  $('startWave').style.display = S.phase==='prep' ? '' : 'none';
+  $('startWave').textContent = `▶ Почати хвилю ${S.wave+1}`;
+  $('pauseBtn').textContent = S.paused ? '▶ Далі' : 'Пауза';
+  $('speedBtn').textContent = '×' + S.speed;
+  // оновити доступність кнопок без перебудови
+  const btns = $('toolbar').querySelectorAll('.tool');
+  Object.values(DEFENSES).forEach((d,i)=>{ if(btns[i]) btns[i].disabled = S.coins < d.cost; });
+}
+
+/* ---------- модальні вікна ---------- */
+function modal(html, buttons){
+  $('modal').innerHTML = html + '<div class="row" id="mrow"></div>';
+  const row = $('mrow');
+  (buttons||[]).forEach(b=>{
+    const el = document.createElement('button');
+    el.textContent = b.text; if (b.primary) el.className='primary';
+    el.onclick = b.onClick; row.appendChild(el);
+  });
+  $('overlay').classList.add('show');
+}
+function closeModal(){ $('overlay').classList.remove('show'); }
+
+function rulesHTML(){
+  return `<h2>🏰 Як грати</h2>
+  <p>Ліворуч — твої акаунти й пристрої: ${LANES.map(l=>l.icon+' '+l.name).join(', ')}. Праворуч на них ідуть кіберзагрози.</p>
+  <p><b>Став засоби захисту</b> на клітинки поля: обери захист унизу й натисни на клітинку. Захист атакує загрози у своєму ряду.</p>
+  <p><b>Головне правило:</b> кожен захист працює лише проти певних загроз. Пароль не зупинить вірус, а антивірус не врятує від злитого пароля. Неправильний захист завдає лише 10% шкоди.</p>
+  <p>Кібербали 💠 нараховуються за знешкоджені загрози, з часом і за правильні відповіді між хвилями.</p>
+  <p>Якщо загроза дійде до акаунта, <b>захищеність</b> падає. На нулі — дані зламано, гра завершена.</p>`;
+}
+
+function startScreen(){
+  S.phase='menu';
+  modal(`<h2>🏰 Цифрова фортеця</h2>
+    <p>Захисти свої акаунти та пристрої від 8 хвиль кіберзагроз. Обирай правильний захист для кожної загрози — і дізнайся, як насправді вберегти свої дані.</p>
+    ${rulesHTML().replace(/<h2>.*?<\/h2>/,'')}
+    <p><label>Твоє ім’я та клас (для результату):<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Олена К., 10-А"></label></p>`,
+    [{text:'Почати гру', primary:true, onClick:()=>{
+      S.player = ($('pname').value||'').trim() || 'Гравець';
+      closeModal(); beginWaveIntro();
+    }}]);
+  setTimeout(()=>{ const p=$('pname'); if(p) p.focus(); },50);
+}
+
+function beginWaveIntro(){
+  const w = WAVES[S.wave];
+  w.unlock.forEach(k=>S.unlocked.add(k));
+  buildToolbar(); showInfo();
+  let html = `<h2>Хвиля ${S.wave+1} з ${WAVES.length}</h2>`;
+  if (w.intro.length){
+    html += w.intro.map(t=>{ const th=THREATS[t];
+      const stops = Object.values(DEFENSES).filter(d=>d.counters.includes(t)).map(d=>`<span class="tag">${d.icon} ${d.name}</span>`).join('');
+      return `<div class="card"><div class="big">${th.icon}</div><div><h3>Нова загроза: ${th.name}</h3><p>${th.desc}</p><p class="muted">Що допомагає: ${stops}</p></div></div>`;}).join('');
+  } else {
+    html += `<div class="card"><div class="big">⚠️</div><div><h3>Фінальна атака!</h3><p>Усі загрози одночасно. Перевір, чи в кожному ряду є захист від кожного типу атак.</p></div></div>`;
+  }
+  if (w.unlock.length){
+    html += w.unlock.map(k=>{const d=DEFENSES[k];
+      return `<div class="card"><div class="big">${d.icon}</div><div><h3>Новий захист: ${d.name} (💠 ${d.cost})</h3><p>${d.desc}</p></div></div>`;}).join('');
+  }
+  if (S.defs.length >= 22) html += `<p>💡 <b>Поле майже заповнене.</b> Прибери (♻️) захисти, які не допомагають проти нових загроз, і постав на їхнє місце потрібні.</p>`;
+  html += `<p class="muted">Розстав захист, а потім натисни «▶ Почати хвилю».</p>`;
+  modal(html, [{text:'Зрозуміло', primary:true, onClick:()=>{ closeModal(); S.phase='prep'; updateHUD(); }}]);
+}
+
+function startWave(){
+  if (S.phase!=='prep') return;
+  const w = WAVES[S.wave];
+  S.queue = [];
+  w.groups.forEach((g,gi)=>{
+    const [type,count,interval] = g;
+    for (let i=0;i<count;i++) S.queue.push({t: 1 + gi*3.5 + i*interval, type});
+  });
+  S.queue.sort((a,b)=>a.t-b.t);
+  S.waveTime = 0; S.incomeT = 0; S.phase='playing'; updateHUD();
+}
+
+function waveCleared(){
+  S.st.wavesDone++;
+  S.coins += CFG.waveBonus;
+  addFloat(W/2, H/2, `Хвиля відбита! +${CFG.waveBonus} 💠`, '#4fd1a5', 22);
+  const after = WAVES[S.wave].after;
+  S.wave++;
+  S.phase='between';
+  updateHUD();
+  const next = () => { if (S.wave >= WAVES.length) return finish(true); beginWaveIntro(); };
+  setTimeout(()=>{
+    if (after==='password') passwordTask(next);
+    else if (after==='quiz') quizTask(2, next);
+    else next();
+  }, 900);
+}
+
+/* ---------- міні-завдання: пароль ---------- */
+const COMMON = ['password','qwerty','qwertyuiop','123456','12345678','123456789','111111','iloveyou','admin','welcome','monkey','dragon','football','letmein','abc123','йцукен','пароль','sunshine','princess','master','ukraine','україна','kyiv','київ','privet','привіт'];
+function analyzePassword(p){
+  const low = p.toLowerCase();
+  let pool = 0;
+  const has = {
+    lower:/[a-zа-яіїєґ]/.test(p), upper:/[A-ZА-ЯІЇЄҐ]/.test(p),
+    digit:/\d/.test(p), sym:/[^A-Za-zА-Яа-яІіЇїЄєҐґ0-9]/.test(p)
+  };
+  if (has.lower) pool += 33; if (has.upper) pool += 33; if (has.digit) pool += 10; if (has.sym) pool += 33;
+  let bits = p.length * Math.log2(Math.max(pool,1));
+  const common = COMMON.some(c => low.includes(c));
+  const repeats = /(.)\1\1/.test(p);
+  const seq = /(012|123|234|345|456|567|678|789|abc|bcd|cde|qwe|wer|asd|йцу|фів)/i.test(p);
+  const year = /(19|20)\d\d/.test(p);
+  if (common) bits = Math.min(bits, 16);
+  if (repeats) bits *= 0.75;
+  if (seq) bits *= 0.8;
+  if (year) bits -= 6;
+  bits = Math.max(0,bits);
+  const seconds = Math.pow(2,bits) / 2 / 1e10; // 10 млрд спроб/с
+  return {bits, seconds, has, common, repeats, seq, year, len:p.length};
+}
+function fmtTime(s){
+  if (s < 1) return 'менше секунди';
+  const u = [['років',31536000],['днів',86400],['годин',3600],['хвилин',60],['секунд',1]];
+  if (s > 31536000*1e6) return 'понад мільйон років';
+  for (const [n,v] of u){ if (s >= v){ const x = s/v; return (x>=100? Math.round(x).toLocaleString('uk-UA') : x.toFixed(x<10?1:0)) + ' ' + n; } }
+  return Math.round(s)+' секунд';
+}
+function pwdBonus(sec){ return sec < 3600 ? 5 : sec < 31536000 ? 20 : sec < 31536000*1000 ? 40 : 60; }
+function passwordTask(next){
+  modal(`<h2>🔐 Міні-завдання: склади пароль</h2>
+    <div class="warnbox">⚠️ Не вводь свій справжній пароль! Придумай новий — гра нічого не зберігає й нікуди не надсилає.</div>
+    <p>Придумай пароль, який важко зламати, але легко запам’ятати. Чим він стійкіший — тим більше кібербалів отримаєш.</p>
+    <input type="password" id="pwd" maxlength="64" autocomplete="off" placeholder="Введи пароль-приклад">
+    <label class="muted" style="font-size:13px"><input type="checkbox" id="showp"> показати символи</label>
+    <div class="meter"><i id="pm"></i></div>
+    <p id="ptime"><b>Час на злам:</b> —</p>
+    <ul class="checks" id="pchecks"></ul>
+    <p class="muted" style="font-size:13.5px">💡 Порада: фраза з 4+ випадкових слів, напр. «кавун-ліхтар-гроза-сім», надійніша за «P@ssw0rd».</p>`,
+    [{text:'Отримати бонус', primary:true, onClick:()=>{
+        const p = $('pwd').value; const r = analyzePassword(p);
+        const bonus = p.length ? pwdBonus(r.seconds) : 0;
+        S.coins += bonus; S.st.pwdBonus += bonus;
+        if (!S.st.pwdBest || r.seconds > S.st.pwdBestSec){ S.st.pwdBest = fmtTime(r.seconds); S.st.pwdBestSec = r.seconds; }
+        closeModal(); addFloat(W/2,H/2,`+${bonus} 💠 за пароль`, '#ffd166', 22); updateHUD(); setTimeout(next,600);
+    }}]);
+  const inp = $('pwd');
+  $('showp').onchange = e => inp.type = e.target.checked ? 'text' : 'password';
+  inp.oninput = () => {
+    const p = inp.value, r = analyzePassword(p);
+    const pct = Math.min(100, r.bits/90*100);
+    const col = r.seconds < 3600 ? '#ff6b6b' : r.seconds < 31536000 ? '#ffb547' : r.seconds < 31536000*1000 ? '#c6e05a' : '#4fd1a5';
+    $('pm').style.width = (p?Math.max(4,pct):0) + '%'; $('pm').style.background = col;
+    $('ptime').innerHTML = `<b>Час на злам перебором:</b> ${p? fmtTime(r.seconds) : '—'} ${p?`<span class="muted">(бонус: +${pwdBonus(r.seconds)} 💠)</span>`:''}`;
+    const c = (ok,t) => `<li>${ok?'✅':'❌'} ${t}</li>`;
+    $('pchecks').innerHTML = p ? [
+      c(r.len>=12, `Довжина 12+ символів (зараз ${r.len})`),
+      c(r.has.lower && r.has.upper, 'Великі й малі літери'),
+      c(r.has.digit, 'Цифри'),
+      c(r.has.sym, 'Спецсимволи або пробіли/дефіси'),
+      c(!r.common, 'Немає популярних слів і паролів'),
+      c(!r.seq && !r.repeats, 'Немає послідовностей (123, qwe) і повторів (aaa)'),
+      c(!r.year, 'Немає року (дата народження легко знайти)')
+    ].join('') : '';
+  };
+  setTimeout(()=>inp.focus(),50);
+}
+
+/* ---------- міні-завдання: вікторина ---------- */
+function quizTask(n, next){
+  let pool = QUIZ.map((q,i)=>i).filter(i=>!S.quizUsed.has(i));
+  if (pool.length < n) { S.quizUsed.clear(); pool = QUIZ.map((q,i)=>i); }
+  pool.sort(()=>Math.random()-.5);
+  const picks = pool.slice(0,n);
+  let k = 0;
+  const ask = () => {
+    if (k >= picks.length){ closeModal(); updateHUD(); return setTimeout(next,300); }
+    const qi = picks[k]; S.quizUsed.add(qi); const q = QUIZ[qi];
+    modal(`<h2>🧩 Питання ${k+1}/${picks.length}</h2><p><b>${q.q}</b></p><div id="opts"></div><p id="why" class="muted"></p><p class="muted" style="font-size:13px">Правильна відповідь: +25 💠</p>`, []);
+    const box = $('opts'); let done = false;
+    q.a.forEach((txt,i)=>{
+      const b = document.createElement('button'); b.className='opt'; b.textContent = txt;
+      b.onclick = () => {
+        if (done) return; done = true; S.st.quizTotal++;
+        const ok = i===q.answer;
+        if (ok){ S.st.quizOk++; S.coins += 25; }
+        [...box.children].forEach((c,j)=>{ if(j===q.answer) c.classList.add('right'); else if(j===i) c.classList.add('wrong'); });
+        $('why').innerHTML = (ok?'✅ <b>Правильно!</b> ':'❌ <b>Не зовсім.</b> ') + q.why;
+        const row = $('mrow'); const nb = document.createElement('button'); nb.className='primary';
+        nb.textContent = k+1<picks.length ? 'Наступне питання' : 'Продовжити'; nb.onclick = () => { k++; ask(); };
+        row.appendChild(nb); updateHUD();
+      };
+      box.appendChild(b);
+    });
+  };
+  ask();
+}
+
+/* ---------- результати ---------- */
+function finish(win){
+  S.phase='over'; updateHUD();
+  const st = S.st;
+  const acc = st.hits ? Math.round(st.effHits/st.hits*100) : 0;
+  const score = st.kills*10 + Math.max(0,Math.round(S.hp))*5 + st.wavesDone*100 + st.quizOk*50 + st.pwdBonus + (win?300:0);
+  const chk = (score*7 + S.player.length*13 + st.wavesDone*31) % 97;
+  const code = makeCode('ЦФ',score,S.player);
+  let rank = score>=2600?'🏆 Головний кіберзахисник':score>=1800?'🥇 Експерт з безпеки':score>=1000?'🥈 Впевнений користувач':'🥉 Новачок у кібербезпеці';
+  const br = Object.entries(st.breaches).sort((a,b)=>b[1]-a[1]);
+  const tips = br.slice(0,3).map(([t,c])=>{
+    const stops = Object.values(DEFENSES).filter(d=>d.counters.includes(t)).map(d=>d.icon+' '+d.name).join(', ');
+    return `<div class="card"><div class="big">${THREATS[t].icon}</div><div><h3>${THREATS[t].name} — прорвалось ${c} раз(и)</h3><p>Що допомагає: ${stops}.</p></div></div>`;
+  }).join('');
+  const date = new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  modal(`<h2>${win?'🎉 Фортеця вистояла!':'💥 Дані зламано'}</h2>
+    <p><b>${escapeHTML(S.player)}</b> · ${date}</p>
+    <p style="font-size:18px">${rank}</p>
+    <table class="res">
+      <tr><td>Пройдено хвиль</td><td>${st.wavesDone} з ${WAVES.length}</td></tr>
+      <tr><td>Залишок захищеності</td><td>${Math.max(0,Math.round(S.hp))}%</td></tr>
+      <tr><td>Знешкоджено загроз</td><td>${st.kills}</td></tr>
+      <tr><td>Влучність вибору захисту (ефективні удари)</td><td>${acc}%</td></tr>
+      <tr><td>Правильні відповіді у вікторині</td><td>${st.quizOk} з ${st.quizTotal}</td></tr>
+      <tr><td>Найстійкіший пароль (час на злам)</td><td>${st.pwdBest||'—'}</td></tr>
+      <tr><td><b>Загальний рахунок</b></td><td>${score}</td></tr>
+    </table>
+    <p>Код результату для вчителя: <span class="code">${code}</span></p>
+    ${br.length?`<h3 style="margin:14px 0 4px">Над чим попрацювати</h3>${tips}`:'<p>✅ Жодна загроза не дійшла до твоїх даних. Чудова робота!</p>'}
+    <h3 style="margin:14px 0 4px">Запам’ятай</h3>
+    <p>🔐 Довгий унікальний пароль для кожного сайту + 🗝️ менеджер паролів · 📱 2FA всюди, де можна · 🔄 вчасні оновлення · 🛡️ антивірус · 💾 регулярні резервні копії · 🧠 зупинись і перевір, перш ніж натискати чи вводити дані.</p>`,
+    [{text:'📋 Копіювати результат', onClick:(e)=>{
+        const txt = `Цифрова фортеця — ${S.player}, ${date}\nХвиль: ${st.wavesDone}/${WAVES.length}; захищеність: ${Math.max(0,Math.round(S.hp))}%; загроз: ${st.kills}; влучність: ${acc}%; вікторина: ${st.quizOk}/${st.quizTotal}\nРахунок: ${score}; код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+        const btn = e.target;
+        try { navigator.clipboard.writeText(txt).then(()=>btn.textContent='✅ Скопійовано', ()=>btn.textContent='Не вдалося скопіювати'); }
+        catch(err){ btn.textContent='Не вдалося скопіювати'; }
+     }},
+     {text:'🖨 Друк / PDF', onClick:()=>{ try{ window.print(); }catch(e){} }},
+     {text:'Грати знову', primary:true, onClick:()=>{ closeModal(); S = newState(); buildToolbar(); showInfo(); updateHUD(); startScreen(); }}]);
+  try { const best = +localStorage.getItem('fortressBest')||0; if (score>best) localStorage.setItem('fortressBest',score); } catch(e){}
+}
+function escapeHTML(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- ігрова логіка ---------- */
+function addFloat(x,y,text,color,size){ S.floats.push({x,y,text,color,size:size||14,t:0}); }
+function spawn(type){
+  const th = THREATS[type], row = Math.floor(Math.random()*ROWS);
+  const hp = th.hp * (1 + CFG.hpGrowth*S.wave);
+  S.threats.push({type,row,x:W+30,y:row*CELL+CELL/2,hp,max:hp,slow:0,wob:Math.random()*6});
+}
+function update(dt){
+  if (S.phase!=='playing') return;
+  S.waveTime += dt; S.incomeT += dt;
+  if (S.incomeT >= CFG.incomeEvery){ S.incomeT -= CFG.incomeEvery; S.coins += CFG.incomeAmount; }
+  while (S.queue.length && S.queue[0].t <= S.waveTime) spawn(S.queue.shift().type);
+
+  // загрози рухаються
+  for (const t of S.threats){
+    t.x -= THREATS[t.type].speed * dt;
+    if (t.x < CELL - 10){
+      t.dead = true;
+      S.hp -= THREATS[t.type].damage;
+      S.st.breaches[t.type] = (S.st.breaches[t.type]||0) + 1;
+      addFloat(CELL/2, t.y-20, `−${THREATS[t.type].damage} 🛡`, '#ff6b6b', 16);
+      flash = 0.35;
+    }
+  }
+  // захисти стріляють
+  for (const d of S.defs){
+    d.cd -= dt;
+    if (d.cd > 0) continue;
+    const dx = d.col*CELL + CELL/2;
+    let target = null;
+    for (const t of S.threats) if (!t.dead && t.row===d.row && t.x > dx-20 && t.x < W+10 && (!target || t.x < target.x)) target = t;
+    if (target){
+      const def = DEFENSES[d.type];
+      S.shots.push({x:dx+18, y:d.row*CELL+CELL/2, row:d.row, type:d.type, dmg:def.dmg});
+      d.cd = def.rate; d.fire = 0.12;
+    }
+  }
+  // снаряди
+  for (const s of S.shots){
+    s.x += 420*dt;
+    if (s.x > W+20){ s.dead = true; continue; }
+    for (const t of S.threats){
+      if (t.dead || t.row!==s.row) continue;
+      if (Math.abs(t.x - s.x) < 20){
+        const eff = DEFENSES[s.type].counters.includes(t.type);
+        t.hp -= s.dmg * (eff ? 1 : CFG.weakMult);
+        S.st.hits++; if (eff) S.st.effHits++;
+        if (!eff && Math.random()<0.25) addFloat(t.x, t.y-26, 'не діє!', '#ffb547', 13);
+        s.dead = true;
+        if (t.hp <= 0){
+          t.dead = true; S.st.kills++;
+          const r = THREATS[t.type].reward; S.coins += r;
+          addFloat(t.x, t.y-20, `+${r} 💠`, '#4fd1a5', 14);
+        }
+        break;
+      }
+    }
+  }
+  S.threats = S.threats.filter(t=>!t.dead);
+  S.shots = S.shots.filter(s=>!s.dead);
+
+  if (S.hp <= 0){ S.hp = 0; S.phase='over'; updateHUD(); setTimeout(()=>finish(false), 700); return; }
+  if (!S.queue.length && !S.threats.length) waveCleared();
+}
+
+/* ---------- малювання ---------- */
+let flash = 0;
+function draw(dt){
+  ctx.clearRect(0,0,W,H);
+  for (let r=0;r<ROWS;r++){
+    ctx.fillStyle = r%2 ? '#111a2f' : '#0f172a';
+    ctx.fillRect(0,r*CELL,W,CELL);
+  }
+  // сітка
+  ctx.strokeStyle = 'rgba(91,157,255,.08)'; ctx.lineWidth = 1;
+  for (let c=1;c<COLS;c++){ ctx.beginPath(); ctx.moveTo(c*CELL,0); ctx.lineTo(c*CELL,H); ctx.stroke(); }
+  // колонка активів
+  ctx.fillStyle = '#18264a'; ctx.fillRect(0,0,CELL,H);
+  ctx.strokeStyle = '#4fd1a5'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(CELL,0); ctx.lineTo(CELL,H); ctx.stroke();
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  LANES.forEach((l,r)=>{
+    ctx.font = `32px ${EMOJI}`; ctx.fillText(l.icon, CELL/2, r*CELL+CELL/2-8);
+    ctx.font = '11px "Segoe UI",sans-serif'; ctx.fillStyle = '#9aa8c7'; ctx.fillText(l.name, CELL/2, r*CELL+CELL-12); ctx.fillStyle = '#fff';
+  });
+  // підсвітка клітинки
+  if (S.hover && S.selected && S.phase!=='over' && S.phase!=='menu'){
+    const {c,r} = S.hover;
+    if (c>=1 && c<COLS){
+      const occ = S.defs.find(d=>d.col===c&&d.row===r);
+      let ok;
+      if (S.selected==='sell') ok = !!occ;
+      else ok = !occ && S.coins >= DEFENSES[S.selected].cost;
+      ctx.fillStyle = ok ? 'rgba(79,209,165,.18)' : 'rgba(255,107,107,.18)';
+      ctx.fillRect(c*CELL+2, r*CELL+2, CELL-4, CELL-4);
+      if (ok && S.selected!=='sell'){ ctx.globalAlpha=.5; ctx.font=`34px ${EMOJI}`; ctx.fillText(DEFENSES[S.selected].icon, c*CELL+CELL/2, r*CELL+CELL/2); ctx.globalAlpha=1; }
+    }
+  }
+  // захисти
+  for (const d of S.defs){
+    const def = DEFENSES[d.type], x=d.col*CELL, y=d.row*CELL;
+    d.fire = Math.max(0,(d.fire||0)-dt);
+    ctx.fillStyle = '#1d2a47'; roundRect(x+8,y+8,CELL-16,CELL-16,14); ctx.fill();
+    ctx.strokeStyle = def.color; ctx.lineWidth = d.fire>0?4:2; roundRect(x+8,y+8,CELL-16,CELL-16,14); ctx.stroke();
+    ctx.font = `34px ${EMOJI}`; ctx.fillText(def.icon, x+CELL/2, y+CELL/2+1);
+  }
+  // снаряди
+  for (const s of S.shots){
+    ctx.fillStyle = DEFENSES[s.type].color;
+    ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = .35; ctx.beginPath(); ctx.arc(s.x-10, s.y, 4, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  // загрози
+  const now = performance.now()/1000;
+  for (const t of S.threats){
+    const y = t.y + Math.sin(now*4+t.wob)*3;
+    ctx.fillStyle = 'rgba(255,107,107,.15)'; ctx.beginPath(); ctx.arc(t.x, y, 26, 0, Math.PI*2); ctx.fill();
+    ctx.font = `32px ${EMOJI}`; ctx.fillText(THREATS[t.type].icon, t.x, y);
+    const w = 44, p = Math.max(0,t.hp/t.max);
+    ctx.fillStyle = '#2a3350'; ctx.fillRect(t.x-w/2, y-32, w, 5);
+    ctx.fillStyle = p>.5?'#ff6b6b':'#ffb547'; ctx.fillRect(t.x-w/2, y-32, w*p, 5);
+  }
+  // тексти
+  for (const f of S.floats){
+    f.t += dt; f.y -= 28*dt;
+    ctx.globalAlpha = Math.max(0, 1 - f.t/1.3);
+    ctx.font = `bold ${f.size}px "Segoe UI",${EMOJI}`; ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+    ctx.globalAlpha = 1;
+  }
+  S.floats = S.floats.filter(f=>f.t<1.3);
+  if (flash>0){ ctx.fillStyle = `rgba(255,60,60,${flash*.5})`; ctx.fillRect(0,0,W,H); flash -= dt; }
+  if (S.paused && S.phase==='playing'){
+    ctx.fillStyle='rgba(5,9,20,.55)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff'; ctx.font='bold 30px "Segoe UI",sans-serif'; ctx.fillText('ПАУЗА', W/2, H/2);
+  }
+  if (S.phase==='prep' && !S.threats.length){
+    ctx.fillStyle='rgba(232,238,252,.55)'; ctx.font='16px "Segoe UI",sans-serif';
+    ctx.fillText('Розстав захист і натисни «▶ Почати хвилю»', W/2+CELL/2, H-14);
+  }
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+let last = performance.now(), hudT = 0;
+function loop(ts){
+  let dt = Math.min(0.05, (ts-last)/1000); last = ts;
+  if (!S.paused) for (let i=0;i<S.speed;i++) update(dt);
+  draw(dt);
+  hudT += dt; if (hudT > 0.15){ hudT = 0; updateHUD(); }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- керування ---------- */
+function cellFromEvent(e){
+  const r = cv.getBoundingClientRect();
+  const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+  return {c:Math.floor(x/CELL), r:Math.floor(y/CELL)};
+}
+cv.addEventListener('mousemove', e=>{ S.hover = cellFromEvent(e); });
+cv.addEventListener('mouseleave', ()=>{ S.hover = null; });
+cv.addEventListener('click', e=>{
+  if (S.phase==='menu' || S.phase==='over') return;
+  const {c,r} = cellFromEvent(e); S.hover = {c,r};
+  if (c<1 || c>=COLS || r<0 || r>=ROWS) return;
+  const occ = S.defs.find(d=>d.col===c&&d.row===r);
+  if (S.selected==='sell'){
+    if (occ){ const back = Math.floor(DEFENSES[occ.type].cost/2); S.coins += back; S.defs = S.defs.filter(d=>d!==occ);
+      addFloat(c*CELL+CELL/2, r*CELL+20, `+${back} 💠`, '#9aa8c7'); }
+  } else if (S.selected){
+    const def = DEFENSES[S.selected];
+    if (occ){ addFloat(c*CELL+CELL/2, r*CELL+20, 'зайнято', '#ffb547'); }
+    else if (S.coins < def.cost){ addFloat(c*CELL+CELL/2, r*CELL+20, 'бракує 💠', '#ff6b6b'); }
+    else { S.coins -= def.cost; S.defs.push({type:S.selected,row:r,col:c,cd:0}); S.st.built++; }
+  } else if (occ){
+    S.selected = null; const def = DEFENSES[occ.type];
+    $('info').innerHTML = `<b>${def.icon} ${def.name}</b> — ${def.desc}<br>Зупиняє: ${def.counters.map(t=>`<span class="tag">${THREATS[t].icon} ${THREATS[t].name}</span>`).join('')}`;
+  }
+  updateHUD(); buildToolbar();
+});
+$('startWave').onclick = startWave;
+$('pauseBtn').onclick = () => { S.paused = !S.paused; updateHUD(); };
+$('speedBtn').onclick = () => { S.speed = S.speed===1?2:1; updateHUD(); };
+$('helpBtn').onclick = () => {
+  if (S.phase==='menu') return;
+  const wasPaused = S.paused; S.paused = true;
+  modal(rulesHTML() + `<h3>Загрози та захист</h3>` + Object.entries(THREATS).map(([k,t])=>`<p>${t.icon} <b>${t.name}</b> ← ${Object.values(DEFENSES).filter(d=>d.counters.includes(k)).map(d=>d.icon+' '+d.name).join(', ')}</p>`).join(''),
+    [{text:'Продовжити', primary:true, onClick:()=>{ closeModal(); S.paused = wasPaused; updateHUD(); }}]);
+};
+document.addEventListener('keydown', e=>{
+  if (e.target.tagName==='INPUT') return;
+  if (e.code==='Space' && S.phase==='playing'){ e.preventDefault(); S.paused=!S.paused; updateHUD(); }
+  if (e.key==='Escape'){ S.selected=null; buildToolbar(); showInfo(); }
+});
+
+buildToolbar(); showInfo(); updateHUD(); startScreen();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

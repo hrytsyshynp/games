@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Цифровий слід — квест про захист персональних даних</title>
+<style>
+  :root{
+    --bg:#0f1322; --panel:#171d33; --panel2:#1f2742; --line:#2e3858;
+    --text:#eef1fb; --muted:#9ba5c4; --accent:#7c8cff; --ok:#4fd1a5; --warn:#ffb547; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 600px at 50% -200px,#2a2f5c,var(--bg));color:var(--text);
+       font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:980px;margin:0 auto;padding:12px}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  h1{margin:0;font-size:22px}
+  h1 span{color:var(--accent)}
+  .hud{display:flex;gap:8px;flex-wrap:wrap}
+  .pill{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:14px;white-space:nowrap}
+  .keys span{opacity:.25;filter:grayscale(1);font-size:16px}
+  .keys span.got{opacity:1;filter:none}
+  button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 13px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#0c1030;font-weight:700}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .stage{display:grid;grid-template-columns:minmax(0,420px) 1fr;gap:16px;align-items:start}
+  @media (max-width:820px){.stage{grid-template-columns:1fr}.side{order:-1;position:static}}
+  .side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;position:sticky;top:10px}
+  .side h2{margin:0 0 8px;font-size:18px}
+  .side p{margin:6px 0;line-height:1.45;font-size:14.5px;color:var(--muted)}
+  .side p b{color:var(--text)}
+  .prog{height:10px;background:#2a3152;border-radius:6px;overflow:hidden;margin:10px 0}
+  .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--ok));transition:width .3s}
+
+  /* ---- телефон / профіль ---- */
+  .phone{background:#0b0e1a;border:1px solid var(--line);border-radius:26px;padding:10px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+  .app{background:#fafafa;color:#111;border-radius:18px;overflow:hidden}
+  .appbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #e6e6e6;font-weight:700}
+  .appbar small{font-weight:400;color:#888;font-size:11px}
+  .prof{padding:14px;display:flex;gap:14px;align-items:center}
+  .ava{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#ffb36b,#ff6ba8);display:flex;align-items:center;justify-content:center;font-size:36px;flex:none}
+  .pname{font-weight:700;font-size:16px}
+  .pstats{display:flex;gap:14px;font-size:13px;color:#444;margin-top:4px}
+  .bio{margin:0 14px 12px;padding:8px 10px;border-radius:10px;font-size:13.5px;line-height:1.45;white-space:pre-line}
+  .post{border-top:1px solid #ececec;padding-bottom:6px}
+  .ph{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:13px}
+  .ph .mini{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ffb36b,#ff6ba8);display:flex;align-items:center;justify-content:center;font-size:15px}
+  .ph .geo{color:#666;font-size:11.5px;display:block}
+  .pic{height:190px;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:74px;position:relative;color:#fff;text-align:center}
+  .pic .over{font-size:13px;font-weight:600;background:rgba(0,0,0,.35);padding:4px 10px;border-radius:8px;margin-top:6px;max-width:85%}
+  .cap{padding:6px 12px 2px;font-size:13.5px;line-height:1.4}
+  .cmt{padding:2px 12px;font-size:12.5px;color:#333}
+  .cmt b{color:#111}
+  .chk{cursor:pointer;position:relative;transition:box-shadow .15s}
+  .chk:hover{box-shadow:inset 0 0 0 3px #7c8cff}
+  .chk.done-ok{box-shadow:inset 0 0 0 3px #2bb383}
+  .chk.done-part{box-shadow:inset 0 0 0 3px #f0a020}
+  .chk.done-bad{box-shadow:inset 0 0 0 3px #e04848}
+  .badge{position:absolute;top:8px;right:8px;background:#fff;color:#111;border-radius:20px;padding:2px 8px;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2);z-index:2}
+
+  /* ---- модальне ---- */
+  .overlay{position:fixed;inset:0;background:rgba(6,8,18,.8);display:none;align-items:center;justify-content:center;padding:14px;z-index:20}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:20px 22px}
+  .modal h2{margin:0 0 10px;font-size:21px}
+  .modal p{line-height:1.5;margin:8px 0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+  @media (max-width:520px){.opts{grid-template-columns:1fr}}
+  .opts label{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;font-size:14px}
+  .opts label.right{border-color:var(--ok);background:#1d4a3d}
+  .opts label.wrong{border-color:var(--bad);background:#4d2424}
+  .opts label.missed{border-color:var(--warn);border-style:dashed}
+  .opts input{width:17px;height:17px;accent-color:var(--accent)}
+  .preview{background:#fafafa;color:#111;border-radius:12px;overflow:hidden;margin:8px 0}
+  .fb{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14.5px;line-height:1.45}
+  .fb.ok{background:#1d4a3d}.fb.part{background:#4a3b17}.fb.bad{background:#4d2424}
+  .qopt{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px}
+  .qopt.right{background:#1d4a3d;border-color:var(--ok)}
+  .qopt.wrong{background:#4d2424;border-color:var(--bad)}
+  .card{display:flex;gap:12px;background:var(--panel2);border-radius:12px;padding:12px;margin:10px 0}
+  .card .big{font-size:32px;line-height:1}
+  .card h3{margin:0 0 4px;font-size:16px}
+  .card p{margin:3px 0;font-size:14px}
+
+  /* ---- рівень 3 ---- */
+  .lvl3{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:820px){.lvl3{grid-template-columns:1fr}}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .box h3{margin:0 0 10px;font-size:17px}
+  .item{background:var(--panel2);border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
+  .item .t{margin-bottom:6px}
+  .seg{display:flex;gap:5px;flex-wrap:wrap}
+  .seg button{padding:5px 9px;font-size:13px}
+  .seg button.on{background:var(--accent);color:#0c1030;border-color:var(--accent);font-weight:600}
+  .item.good{outline:2px solid var(--ok)} .item.badd{outline:2px solid var(--bad)}
+  .item .why{font-size:13px;color:var(--muted);margin-top:6px}
+  .set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:14px}
+  .set:last-child{border-bottom:0}
+  .switch{width:46px;height:26px;border-radius:13px;background:#3a4266;position:relative;cursor:pointer;flex:none;border:0;padding:0}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+  .switch.on{background:var(--ok)} .switch.on::after{left:23px}
+  select{font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+  .set.good{background:rgba(79,209,165,.12)} .set.badd{background:rgba(255,107,107,.14)}
+  .timer{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .timer.low{color:var(--bad)}
+  table.res{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px solid var(--line)}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:20px;background:#0d1124;border:1px dashed var(--accent);border-radius:10px;padding:8px 12px;display:inline-block}
+  .muted{color:var(--muted)}
+  .picker{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  @media (max-width:520px){.picker{grid-template-columns:1fr}}
+  .pcard{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px 10px;cursor:pointer}
+  .pcard:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,140,255,.35) inset}
+  .pcard input{accent-color:var(--accent)}
+  .pcard small{display:block;color:var(--muted);font-size:12px}
+  .pava{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+  button.pill{cursor:pointer}
+  .hidden{display:none!important}
+  @media print{
+    body{background:#fff;color:#000}.wrap{display:none}
+    .overlay{position:static;display:block;background:none;padding:0}
+    .modal{border:1px solid #999;background:#fff;color:#000;max-height:none}
+    .row{display:none}.card{background:#f1f1f1}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🔍 Цифровий <span>слід</span></h1>
+    <div class="hud">
+      <div class="pill keys" id="keys" title="Ключі від кімнат"><span>🔑</span><span>🔑</span><span>🔑</span><span>🔑</span></div>
+      <div class="pill">⭐ <b id="score">0</b></div>
+      <div class="pill">⏱ <b id="clock">0:00</b></div>
+      <button class="pill" id="who" title="Обрати інший профіль">🔄 <span id="whoName">Профіль</span></button>
+    </div>
+  </header>
+  <div id="view"></div>
+</div>
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати тексти, пости та питання
+   Персонаж і всі дані в грі вигадані.
+   ===================================================================== */
+const APP_NAME = 'Кадр';
+
+// Типи персональних даних, які учень шукає в постах
+const TYPES = {
+  dob:   '🎂 Дата народження',
+  school:'🏫 Навчальний заклад, клас',
+  addr:  '🏠 Адреса / де живеш',
+  phone: '📞 Номер телефону',
+  doc:   '🪪 Документ або квиток',
+  fin:   '💳 Платіжні дані',
+  secq:  '❓ Відповіді на «контрольні питання»',
+  away:  '🧳 Коли нікого немає вдома',
+  sched: '🗓 Регулярний розклад (де тебе знайти)',
+  now:   '📡 Де ти зараз (у реальному часі)',
+  email: '📧 Пошта / дані акаунтів',
+  secret:'🔑 Паролі, коди, ключі доступу',
+  family:'👨‍👩‍👧 Дані рідних',
+  none:  '✅ Нічого небезпечного'
+};
+
+// Елементи профілю. answer — правильний набір типів даних
+const MAX_ITEMS = [
+  {id:'bio', kind:'bio',
+   text:'Макс 😎 | 🎂 14 березня\n📍 Полтава | Ліцей №5, 10-Б\n🏀 баскетбол · 🎮 ігри',
+   answer:['dob','school'],
+   why:'Дата народження і навчальний заклад з класом дозволяють точно визначити тебе серед інших людей. Дату народження часто використовують для підтвердження особи, тому її краще не показувати всім.'},
+  {id:'balcony', geo:'вул. Квіткова, 12, Полтава', bg:'linear-gradient(160deg,#ff9a5a,#6b5bff)', pic:'🌇', over:'',
+   cap:'Вид з мого балкона — топ 🔥', answer:['addr'],
+   why:'Геотег з точною адресою показує всім, де ти живеш. Вимикай геолокацію у фото і не позначай свій дім.'},
+  {id:'idcard', bg:'linear-gradient(160deg,#5ab0ff,#2a4bd8)', pic:'🪪', over:'ID-картка · № ●●●●●●●●● · дата нар. 14.03',
+   cap:'Нарешті отримав ID-картку! 🎉 Дорослий 😅', answer:['doc','dob'],
+   why:'Фото документа — серйозний витік: номер, дата народження, фото обличчя. Такими даними можуть скористатися шахраї, щоб видати себе за тебе. Документи не публікують ніколи — навіть частково затерті.'},
+  {id:'dog', bg:'linear-gradient(160deg,#ffd36b,#ff8a4d)', pic:'🐶', over:'',
+   cap:'Мій Бакс — найкращий пес у світі! 🐾', answer:['secq'],
+   why:'Сам по собі пост про улюбленця не страшний. Але кличка тварини — популярна відповідь на «контрольне питання» для відновлення пароля. А ще її часто вставляють у пароль. Тож ніколи не використовуй її як пароль чи відповідь.'},
+  {id:'poll', bg:'linear-gradient(160deg,#b06bff,#ff6bb5)', pic:'📝', over:'Гра! Перша вчителька? Перший улюбленець? Вулиця, де виріс?',
+   cap:'Хто швидше відповість у коментарях? 👇',
+   comments:[['max_t_10b','Ганна Петрівна, Бакс, Квіткова 😄']],
+   answer:['secq'],
+   why:'«Безневинні» опитування часто збирають саме відповіді на контрольні питання сервісів. Не відповідай на такі ігри у відкритих коментарях.'},
+  {id:'vacation', bg:'linear-gradient(160deg,#4de0ff,#2b8cff)', pic:'✈️', over:'',
+   cap:'Завтра летимо всією сім’єю на море на 2 тижні! Квартира в повному розпорядженні… кота 😅', answer:['away'],
+   why:'Разом з адресою з іншого посту це повідомлення каже: «квартира порожня 2 тижні». Фото з відпочинку краще публікувати після повернення.'},
+  {id:'ticket', bg:'linear-gradient(160deg,#6be0b0,#2c9c7a)', pic:'🎫', over:'Посадковий талон · ПІБ · QR-код бронювання',
+   cap:'Вже в аеропорту 🛫', answer:['doc','away'],
+   why:'Штрих- чи QR-код на квитку містить дані бронювання, за якими інколи можна змінити чи скасувати поїздку. Плюс видно, що ти не вдома. Квитки й посадкові талони не публікують.'},
+  {id:'training', bg:'linear-gradient(160deg,#ff7a59,#c2306b)', pic:'🏀', over:'',
+   geo:'СК «Олімп»',
+   cap:'Кожен вівторок і четвер о 18:00 — тренування. Хто зі мною? 💪', answer:['sched'],
+   why:'Регулярний розклад з місцем показує незнайомцям, де й коли тебе точно можна знайти. Ділися таким лише з друзями в особистих повідомленнях.'},
+  {id:'phone', bg:'linear-gradient(160deg,#9aa4b8,#5a6378)', pic:'💬', over:'',
+   cap:'Новий телефон — нове життя 📱',
+   comments:[['dima_k','Скинь номер, бо в мене старий'],['max_t_10b','+380 (99) 000-00-00 пиши 👍']],
+   answer:['phone'],
+   why:'Номер телефону у відкритому коментарі бачать усі. Його використовують для спаму, шахрайських дзвінків і пошуку твоїх інших акаунтів. Номери передають в особистих повідомленнях.'},
+  {id:'card', bg:'linear-gradient(160deg,#ffcf5a,#e08a1e)', pic:'💳', over:'4149 ●●●● ●●●● ●●●● · МАКСИМ Т.',
+   cap:'Мама дала картку на покупки — шопінг! 🛍', answer:['fin'],
+   why:'Фото платіжної картки (навіть частково) — пряма загроза грошам. Картку не фотографують і нікому не показують, а дані з неї (особливо CVV) не вводять на сумнівних сайтах.'},
+  {id:'drawing', bg:'linear-gradient(160deg,#c9b8ff,#7c6bff)', pic:'✏️', over:'',
+   cap:'Намалював нового персонажа для своєї гри 🎨', answer:['none'],
+   why:'Твоя творчість — чудовий контент. Тут немає персональних даних.'},
+  {id:'book', bg:'linear-gradient(160deg,#8fe08a,#2d9c5a)', pic:'📚', over:'',
+   cap:'Раджу «Маленького принца» — перечитав і знову вау', answer:['none'],
+   why:'Рекомендація книжки не розкриває нічого про те, де ти, коли і як тебе знайти.'},
+  {id:'sunset', bg:'linear-gradient(160deg,#ff9ac1,#ff6a3d)', pic:'🌅', over:'',
+   cap:'Красивий захід сонця сьогодні', answer:['none'],
+   why:'Без геотегу і без деталей місцевості — безпечний пост.'}
+];
+
+// Кімната 2: як шматочки складаються в ланцюжок
+const MAX_CHAIN = [
+  {q:'Пароль Макса від пошти — «Бакс1403». Що з ним не так?',
+   a:['Він закороткий, а в іншому все добре','Його можна вгадати з даних профілю: кличка пса + дата народження','Нічого, головне що є цифри'], answer:1,
+   why:'Будь-хто, хто погортає профіль, зможе вгадати такий пароль. Пароль не повинен містити жодних фактів про тебе.'},
+  {q:'Коментар «Ганна Петрівна, Бакс, Квіткова» під опитуванням. Чим він ризикований?',
+   a:['Нічим, це просто гра','Ці відповіді часто є «контрольними питаннями» для відновлення доступу до акаунтів','Тим, що там є помилки'], answer:1,
+   why:'Знаючи відповіді на контрольні питання, зловмисник може спробувати «відновити» чужий акаунт.'},
+  {q:'Пост «на 2 тижні на море» + геотег з балкона. Що разом бачить незнайомець?',
+   a:['Що Макс любить море','Точну адресу і час, коли квартира порожня','Нічого особливого'], answer:1,
+   why:'Окремі дрібниці стають небезпечними разом — це і є «цифровий слід».'},
+  {q:'Макс видалить пост із ID-карткою через тиждень. Цього достатньо?',
+   a:['Так, видалене зникає назавжди','Ні — за тиждень фото могли зберегти чи зробити скриншот','Так, якщо пост мав мало лайків'], answer:1,
+   why:'Все, що потрапило в мережу, могли скопіювати. Найкращий захист — не публікувати чутливе взагалі.'}
+];
+
+// Кімната 3: дії з постами. ok — індекси правильних дій
+const MAX_CLEANUP = [
+  {ref:'bio', text:'Біо: дата народження, ліцей і клас', opts:['Прибрати дату й школу','Залишити'], ok:[0],
+   why:'Біо бачать усі. Достатньо імені та захоплень.'},
+  {ref:'balcony', text:'«Вид з мого балкона» з геотегом адреси', opts:['Видалити / прибрати геотег','Залишити'], ok:[0],
+   why:'Адреса дому не повинна бути публічною.'},
+  {ref:'idcard', text:'Фото ID-картки', opts:['Видалити','Лише для друзів','Залишити'], ok:[0],
+   why:'Документи не публікують навіть для друзів.'},
+  {ref:'vacation', text:'«Летимо на 2 тижні»', opts:['Видалити, викласти фото після повернення','Залишити'], ok:[0],
+   why:'Про відсутність удома краще не повідомляти заздалегідь.'},
+  {ref:'ticket', text:'Фото посадкового талона', opts:['Видалити','Лише для друзів','Залишити'], ok:[0],
+   why:'QR-код і дані бронювання — не для публікації.'},
+  {ref:'phone', text:'Коментар з номером телефону', opts:['Видалити коментар','Залишити'], ok:[0],
+   why:'Номер передають в особистих повідомленнях.'},
+  {ref:'card', text:'Фото платіжної картки', opts:['Видалити','Лише для друзів','Залишити'], ok:[0],
+   why:'Платіжні дані не показують нікому.'},
+  {ref:'training', text:'Розклад тренувань з місцем', opts:['Видалити або лише для друзів','Залишити для всіх'], ok:[0],
+   why:'Розклад — тільки для тих, кого знаєш.'},
+  {ref:'dog', text:'Пост про пса Бакса', opts:['Можна залишити, але не використовувати кличку в паролях','Обов’язково видалити'], ok:[0],
+   why:'Улюбленцями ділитися можна — головне, щоб кличка не була паролем чи відповіддю на контрольне питання.'}
+];
+
+// Кімната 3: налаштування приватності. ok — правильне значення
+const SETTINGS = [
+  {id:'private', label:'Закритий профіль (бачать лише підписники, яких ти схвалив)', type:'switch', start:false, ok:true},
+  {id:'geo',     label:'Додавати геолокацію до фото', type:'switch', start:true, ok:false},
+  {id:'phoneVis',label:'Хто бачить мій номер телефону', type:'select', opts:['Усі','Друзі','Ніхто'], start:'Усі', ok:['Ніхто','Друзі']},
+  {id:'findPhone',label:'Знаходити мене за номером телефону', type:'switch', start:true, ok:false},
+  {id:'tags',    label:'Позначки на чужих фото без мого підтвердження', type:'switch', start:true, ok:false},
+  {id:'bday',    label:'Показувати дату народження', type:'switch', start:true, ok:false},
+  {id:'twofa',   label:'Двофакторна автентифікація', type:'switch', start:false, ok:true},
+  {id:'alerts',  label:'Сповіщення про вхід з нового пристрою', type:'switch', start:false, ok:true},
+  {id:'contacts',label:'Доступ гри «Ферма 3000» до моїх контактів', type:'switch', start:true, ok:false}
+];
+const CLEAN_TIME = 150; // секунд на кімнату 3
+
+// Кімната 4: твої права
+const RIGHTS = [
+  {q:'Що таке персональні дані за Законом України «Про захист персональних даних»?',
+   a:['Тільки дані з паспорта','Відомості про людину, за якими її ідентифіковано або можна конкретно ідентифікувати','Тільки фото обличчя'], answer:1,
+   why:'Персональні дані — це будь-які відомості, за якими можна визначити конкретну людину: ім’я, адреса, телефон, фото, номер документа тощо.'},
+  {q:'Однокласник хоче викласти твоє фото разом з твоєю адресою. Чи потрібна твоя згода?',
+   a:['Ні, якщо фото гарне','Так, обробка й поширення персональних даних потребує згоди людини (або іншої законної підстави)','Лише якщо тобі більше 18'], answer:1,
+   why:'Поширювати чужі персональні дані без згоди не можна. Перш ніж відмітити чи викласти когось — спитай.'},
+  {q:'Застосунок-ліхтарик просить доступ до контактів, камери та геолокації. Як правильно?',
+   a:['Погодитися на все, інакше не працюватиме','Дати лише ті дозволи, що справді потрібні для роботи (ліхтарику — жодних із цих)','Видалити телефон'], answer:1,
+   why:'Дозволи — це доступ до твоїх даних. Давай мінімум, необхідний для функції, і переглядай дозволи в налаштуваннях.'},
+  {q:'Хтось без дозволу виклав твої фото й номер телефону. Що зробити насамперед?',
+   a:['Поскаржитися на публікацію через функцію платформи, попросити видалити й розповісти дорослим, яким довіряєш','Нічого, само зникне','Викласти дані того, хто це зробив'], answer:0,
+   why:'Платформи мають механізми скарг на розкриття особистої інформації. Ти маєш право вимагати видалення своїх даних, а дорослі допоможуть, якщо ситуація серйозна.'},
+  {q:'Яке з цих прав ти маєш щодо своїх персональних даних?',
+   a:['Знати, хто і навіщо обробляє твої дані, та вимагати їх видалення, якщо обробка незаконна','Жодних — після реєстрації дані належать сайту','Тільки право змінити аватар'], answer:0,
+   why:'Закон гарантує право на інформацію про обробку твоїх даних, право заперечити, вимагати зміни чи знищення незаконно оброблених даних, відкликати згоду.'}
+];
+
+
+/* ---------------------------------------------------------------------
+   ПРОФІЛІ ДРУЗІВ. Кожен профіль має свої дописи (items), питання
+   «ланцюжка» (chain) і завдання на прибирання (cleanup).
+   Щоб видати учню конкретний профіль, додайте до посилання #maks,
+   #sofia, #artem або #alina.
+   --------------------------------------------------------------------- */
+const PROFILES = [
+ {id:'maks', name:'Макс Т.', handle:'@max_t_10b', ava:'🧑', avaBg:'linear-gradient(135deg,#ffb36b,#ff6ba8)', f:false,
+  followers:'1 204', following:'389', tagline:'баскетбол, ігри, подорожі',
+  msg:'Мені здається, хтось знає про мене забагато. Перевір мій профіль, будь ласка — що там не так?',
+  items:MAX_ITEMS, chain:MAX_CHAIN, cleanup:MAX_CLEANUP},
+
+ {id:'sofia', name:'Софія К.', handle:'@sofi.art', ava:'👩‍🎨', avaBg:'linear-gradient(135deg,#b78cff,#5ad1ff)', f:true,
+  followers:'3 870', following:'512', tagline:'малювання, стріми',
+  msg:'Мені почали писати якісь дивні люди і навіть знають, де я буваю. Глянь мій профіль, будь ласка!',
+  items:[
+   {id:'bio', kind:'bio', text:'Софія 🎨 · малюю на замовлення\n📧 sofia.art.2010@mail.example\n💬 пиши — відповім!',
+    answer:['email','dob'],
+    why:'Відкрита пошта притягує спам і шахрайські листи, а за нею легко знайти інші твої акаунти. До того ж «2010» в адресі підказує рік народження. Для замовлень краще окрема пошта без особистих даних або кнопка «написати» на платформі.'},
+   {id:'stream', bg:'linear-gradient(160deg,#7b5cff,#2b1b6b)', pic:'🎮', over:'Скрин стріму: у кутку видно відкриту пошту з логіном',
+    cap:'Дякую всім, хто був на вчорашньому стрімі! 💜', answer:['email','secret'],
+    why:'Перед стрімом чи скриншотом закривай пошту, месенджери й менеджер паролів. Глядачі можуть зупинити запис і роздивитися кожен піксель.'},
+   {id:'newschool', bg:'linear-gradient(160deg,#5ab0ff,#3a6bd8)', pic:'🏫', over:'Шкільна форма з емблемою «Гімназія №12»',
+    cap:'Перший день у новій школі! 😍', answer:['school'],
+    why:'Емблема, вивіска чи шкільна форма показують, де тебе щодня можна знайти. Перевіряй, що потрапляє в кадр.'},
+   {id:'cafe', geo:'кафе «Мрія», вул. Соборна', bg:'linear-gradient(160deg,#c98b5a,#7a4a2a)', pic:'☕', over:'',
+    cap:'Я зараз тут, хто поруч — заходьте! 😊', answer:['now'],
+    why:'«Я зараз тут» бачать і незнайомці. Про місце краще написати вже після того, як ти пішла.'},
+   {id:'car', bg:'linear-gradient(160deg,#9fb4c8,#55687d)', pic:'🚗', over:'Номерний знак авто видно повністю',
+    cap:'Тато нарешті купив машину! 🚙', answer:['family'],
+    why:'Номер авто пов’язаний з власником. За ним можна дізнатися про твою родину й упізнати машину біля дому. Номери на фото краще закривати.'},
+   {id:'smscode', bg:'linear-gradient(160deg,#6be0b0,#2c8c6a)', pic:'📱', over:'SMS: «Ваш код входу: ●●●●●●. Нікому не повідомляйте»',
+    cap:'Код прийшов, а я забула, навіщо 😂', answer:['secret'],
+    why:'Код з SMS — це ключ до акаунта. Його не показують нікому і ніде, навіть «старий».'},
+   {id:'mom', bg:'linear-gradient(160deg,#ff9ac1,#ff5c8a)', pic:'🎂', over:'«Олена Петрівна Коваль · 45 років»',
+    cap:'З днем народження, мамо! ❤️', answer:['family','secq'],
+    why:'Повне ім’я, прізвище та вік мами — це дані іншої людини, їх публікують лише з її згоди. А «дівоче прізвище матері» — класичне контрольне питання для відновлення доступу.'},
+   {id:'keys', bg:'linear-gradient(160deg,#ffd36b,#d89a2a)', pic:'🗝️', over:'',
+    cap:'Загубила ключі 🙈 тепер запасні лежать під килимком біля дверей', answer:['secret'],
+    why:'Цей допис розповідає всім, як потрапити у твій дім. Таке не пишуть навіть жартома.'},
+   {id:'house', bg:'linear-gradient(160deg,#8fd18a,#3f8f4a)', pic:'🏡', over:'На фасаді чітко видно номер будинку «27»',
+    cap:'Мій дім — моя фортеця 🏡', answer:['addr'],
+    why:'Номер будинку, вивіска чи вид з вікна допомагають знайти адресу. Перевіряй фон фото.'},
+   {id:'dragon', bg:'linear-gradient(160deg,#ff7a59,#a83279)', pic:'🐉', over:'',
+    cap:'Новий малюнок — вогняний дракон 🔥', answer:['none'],
+    why:'Творчість без особистих деталей — безпечний контент.'},
+   {id:'playlist', bg:'linear-gradient(160deg,#4de0ff,#2b6cff)', pic:'🎧', over:'',
+    cap:'Мій плейлист для малювання — що порадите додати?', answer:['none'],
+    why:'Музичні вподобання не розкривають, хто ти і де тебе знайти.'},
+   {id:'cat', bg:'linear-gradient(160deg,#c9b8ff,#7c6bff)', pic:'🐱', over:'',
+    cap:'Хтось спить на моїх скетчах 😴', answer:['none'],
+    why:'Фото котика без клички, адреси і геотегу — безпечне.'}
+  ],
+  chain:[
+   {q:'У біо Софії — її пошта, а на скрині стріму видно логін. Чим це небезпечно разом?',
+    a:['Нічим, пошта і так публічна','Відомо, до якого акаунта підбирати пароль чи «відновлювати» доступ','Лише тим, що прийде більше реклами'], answer:1,
+    why:'Знаючи логін, зловмиснику залишається вгадати пароль або обдурити систему відновлення. Що менше відомо про твої акаунти, то краще.'},
+   {q:'Допис «я зараз у кафе» плюс фото будинку з номером. Що дізнається незнайомець?',
+    a:['Що Софія любить каву','Де вона зараз і де живе','Нічого особливого'], answer:1,
+    why:'Окремо дрібниці здаються безпечними, але разом дають точну картину твого життя.'},
+   {q:'Сервіс питає: «Дівоче прізвище матері?». Чому це тепер проблема для Софії?',
+    a:['Відповідь легко знайти в її профілі','Таких питань не буває','Це не проблема'], answer:0,
+    why:'Відповіді на контрольні питання не повинні знаходитися в мережі. Можна також давати вигадані відповіді, які знаєш тільки ти, і зберігати їх у менеджері паролів.'},
+   {q:'Софія написала про ключі під килимком і показала будинок. Що найправильніше зробити?',
+    a:['Видалити допис і сказати батькам, щоб перенесли ключі','Нічого, ніхто не читає','Додати хештег #жарт'], answer:0,
+    why:'Допис могли вже побачити, тож мало просто його прибрати: треба усунути саму небезпеку.'}
+  ],
+  cleanup:[
+   {text:'Біо з поштою', opts:['Прибрати пошту, замовлення приймати в повідомленнях','Залишити'], ok:[0], why:'Пошту дають лише тим, кому довіряєш.'},
+   {text:'Скрин стріму з відкритою поштою', opts:['Видалити і надалі закривати вкладки перед стрімом','Залишити'], ok:[0], why:'Перед трансляцією залишай на екрані тільки потрібне.'},
+   {text:'«Я зараз у кафе»', opts:['Видалити (публікувати вже після)','Залишити'], ok:[0], why:'Своє місцеперебування в реальному часі не показують.'},
+   {text:'Фото машини з номером', opts:['Видалити або закрити номер','Залишити'], ok:[0], why:'Номерний знак видає власника.'},
+   {text:'Скрин SMS з кодом', opts:['Видалити','Лише для друзів','Залишити'], ok:[0], why:'Коди підтвердження не показують нікому.'},
+   {text:'Привітання мами з ПІБ і віком', opts:['Прибрати прізвище й вік, спитати згоди мами','Залишити'], ok:[0], why:'Дані рідних публікують лише з їхньої згоди.'},
+   {text:'Ключі під килимком', opts:['Видалити і розповісти батькам','Залишити'], ok:[0], why:'Небезпеку треба усунути, а не тільки сховати.'},
+   {text:'Будинок з номером', opts:['Видалити','Залишити'], ok:[0], why:'Адреса дому не повинна бути публічною.'},
+   {text:'Малюнок дракона', opts:['Залишити — це безпечно','Видалити'], ok:[0], why:'Не все треба видаляти: творчість без особистих даних — це нормально.'}
+  ]},
+
+ {id:'artem', name:'Артем Б.', handle:'@artem_b2008', ava:'🧑‍💻', avaBg:'linear-gradient(135deg,#5ad1a0,#2b7cff)', f:false,
+  followers:'845', following:'1 020', tagline:'кіберспорт, програмування',
+  msg:'Мене хтось намагався зламати в грі, а потім написав незнайомець, який знав мій розклад. Що в мене не так у профілі?',
+  items:[
+   {id:'bio', kind:'bio', text:'Артем 🎮 | 11-А, ліцей №2\nнік всюди однаковий: artem_b2008\nDiscord — у DM',
+    answer:['school','dob'],
+    why:'Ліцей і клас прямо кажуть, де тебе знайти, а «2008» у ніку — рік народження. До того ж однаковий нік на всіх платформах дозволяє легко зібрати всі твої акаунти докупи.'},
+   {id:'acc', bg:'linear-gradient(160deg,#5b6b8a,#2a3350)', pic:'⚙️', over:'Скрин налаштувань: пошта акаунта + резервні коди 2FA',
+    cap:'Нарешті налаштував 2FA, я молодець 😎', answer:['email','secret'],
+    why:'Резервні коди 2FA — запасний ключ від акаунта: хто їх побачить, той обійде двофакторну автентифікацію. Зберігай їх офлайн і ніколи не фотографуй для соцмереж.'},
+   {id:'prize', bg:'linear-gradient(160deg,#ffd36b,#e08a1e)', pic:'🏆', over:'Скрин банківського застосунку: баланс і номер картки',
+    cap:'Виграв турнір! Призові вже на картці 💸', answer:['fin'],
+    why:'Скрини з банківського застосунку показують платіжні дані й баланс. Похвалися перемогою без фінансових деталей.'},
+   {id:'alone', bg:'linear-gradient(160deg,#9aa4b8,#5a6378)', pic:'🛋️', over:'',
+    cap:'Батьки на дачі до неділі, я вдома сам 😎 хто на катку?', answer:['away'],
+    why:'Незнайомцям не треба знати, що ти вдома без дорослих або що квартира порожня.'},
+   {id:'courses', geo:'IT Хаб, вул. Шевченка', bg:'linear-gradient(160deg,#4de0ff,#2b8cff)', pic:'💻', over:'',
+    cap:'Кожну суботу о 10:00 — курси програмування 🔥', answer:['sched'],
+    why:'Регулярний розклад з точним місцем показує, де й коли тебе точно можна знайти.'},
+   {id:'stranger', bg:'linear-gradient(160deg,#b06bff,#5a2bd8)', pic:'🎯', over:'',
+    cap:'Шукаю тімейтів у гру 🎯',
+    comments:[['new_player_777','Привіт! Я теж граю. З якого ти міста? Скинь номер — додам у чат'],['artem_b2008','Полтава, +380 (99) 000-00-01 👌']],
+    answer:['phone','addr'],
+    why:'Незнайомець у коментарях просить номер і місто — типовий початок обману. Онлайн-знайомим не дають телефон і адресу, спілкуйся в межах гри.'},
+   {id:'receipt', bg:'linear-gradient(160deg,#e0e0e0,#9a9a9a)', pic:'🧾', over:'Чек доставки: ПІБ, адреса, телефон',
+    cap:'Нова відеокарта приїхала! 🔥', answer:['addr','phone'],
+    why:'На чеках і накладних є адреса, ПІБ і телефон. Покажи покупку, а не документи до неї.'},
+   {id:'timetable', bg:'linear-gradient(160deg,#ff9a5a,#d8562a)', pic:'📋', over:'Розклад уроків 11-А, ліцей №2',
+    cap:'Знову 7 уроків у вівторок 😩', answer:['school','sched'],
+    why:'Розклад уроків показує, де ти будеш щодня і коли закінчуються заняття.'},
+   {id:'bday', bg:'linear-gradient(160deg,#ff9ac1,#c2306b)', pic:'🎉', over:'Торт зі свічками «17»',
+    cap:'Мені 17! Дякую всім за привітання 🎂 (12.05)', answer:['dob'],
+    why:'Повна дата народження часто використовується для підтвердження особи. Святкуй, але без точної дати.'},
+   {id:'meme', bg:'linear-gradient(160deg,#c9b8ff,#7c6bff)', pic:'😂', over:'',
+    cap:'Понеділок такий: ☕☕☕', answer:['none'], why:'Мем без особистих даних — безпечний.'},
+   {id:'setup', bg:'linear-gradient(160deg,#2b2f4a,#11131f)', pic:'🖥️', over:'',
+    cap:'Мій ігровий сетап — оцініть 🔥', answer:['none'],
+    why:'Якщо на екранах немає відкритих акаунтів і вікно не показує, де ти живеш, — це безпечно.'},
+   {id:'code', bg:'linear-gradient(160deg,#6be0b0,#2d9c5a)', pic:'🐍', over:'',
+    cap:'Написав свою першу гру на Python! 🐍', answer:['none'],
+    why:'Ділитися своїми проєктами — круто. Особистих даних тут немає.'}
+  ],
+  chain:[
+   {q:'Нік artem_b2008 однаковий у грі, соцмережі й на форумі. Що це дає сторонній людині?',
+    a:['Нічого, нік — це не персональні дані','Можна знайти й поєднати всі акаунти Артема та зібрати більше даних','Лише те, що Артем любить ігри'], answer:1,
+    why:'Однаковий нік — нитка, за яку можна витягнути весь твій цифровий слід. Для різних спільнот використовуй різні ніки.'},
+   {q:'На скриншоті видно резервні коди 2FA. Наскільки це серйозно?',
+    a:['Не страшно, 2FA ж увімкнена','Дуже серйозно: з цими кодами можна увійти в акаунт без телефона','Серйозно, тільки якщо коди великі'], answer:1,
+    why:'Резервні коди — обхідний шлях для 2FA. Якщо їх побачили, треба згенерувати нові.'},
+   {q:'«Новий друг» з гри просить номер і місто. Як правильно?',
+    a:['Дати, він же теж грає','Не давати, спілкуватися в грі, а про наполегливі прохання розповісти дорослим','Дати номер, але не місто'], answer:1,
+    why:'Людина в мережі може бути не тим, за кого себе видає. Особисті контакти дають лише тим, кого знаєш у житті.'},
+   {q:'«Вдома сам до неділі» плюс чек доставки з адресою. Що бачить незнайомець?',
+    a:['Що Артем купив відеокарту','Адресу і час, коли вдома немає дорослих','Нічого корисного'], answer:1,
+    why:'Два звичайні дописи разом стають небезпечною інформацією.'}
+  ],
+  cleanup:[
+   {text:'Біо з ліцеєм, класом і роком у ніку', opts:['Прибрати ліцей і клас, змінити нік без року','Залишити'], ok:[0], why:'Нік не повинен містити рік народження.'},
+   {text:'Скрин з резервними кодами 2FA', opts:['Видалити і згенерувати нові коди','Просто видалити допис','Залишити'], ok:[0], why:'Коди, які могли побачити, треба замінити.'},
+   {text:'Скрин банку з призовими', opts:['Видалити','Лише для друзів','Залишити'], ok:[0], why:'Платіжні дані не показують нікому.'},
+   {text:'«Вдома сам до неділі»', opts:['Видалити','Залишити'], ok:[0], why:'Про відсутність дорослих не повідомляють публічно.'},
+   {text:'Розклад курсів з адресою', opts:['Видалити або лише для друзів','Залишити для всіх'], ok:[0], why:'Розклад — тільки для тих, кого знаєш.'},
+   {text:'Коментар з номером для незнайомця', opts:['Видалити коментар і заблокувати незнайомця','Залишити'], ok:[0], why:'Наполегливих незнайомців блокують.'},
+   {text:'Чек доставки', opts:['Видалити','Залишити'], ok:[0], why:'На чеках є адреса і телефон.'},
+   {text:'Фото розкладу уроків', opts:['Видалити або закрити назву ліцею','Залишити'], ok:[0], why:'Розклад показує, де ти будеш щодня.'},
+   {text:'Пост про першу гру на Python', opts:['Залишити — це безпечно','Видалити'], ok:[0], why:'Свої проєкти показувати можна і варто.'}
+  ]},
+
+ {id:'alina', name:'Аліна Р.', handle:'@alina.travels', ava:'👩', avaBg:'linear-gradient(135deg,#ffcf5a,#ff7a59)', f:true,
+  followers:'2 316', following:'640', tagline:'подорожі, волонтерство',
+  msg:'Мама сказала, що я викладаю забагато всього, а я не розумію, що саме не так. Допоможеш розібратися?',
+  items:[
+   {id:'bio', kind:'bio', text:'Аліна ✨ 16 р.\n📍 Вінниця, район Замостя\nволонтерю в притулку 🐾',
+    answer:['addr'],
+    why:'Місто й район разом з віком сильно звужують коло пошуку. Достатньо міста або взагалі нічого.'},
+   {id:'passport', bg:'linear-gradient(160deg,#5ab0ff,#1f4bb8)', pic:'🛂', over:'Закордонний паспорт: сторінка з фото, номер прикрито пальцем',
+    cap:'Мій перший закордонний паспорт! ✈️', answer:['doc'],
+    why:'Навіть з прикритим номером на фото документа видно ПІБ, дату народження, фото й підпис. Документи не публікують.'},
+   {id:'sister', bg:'linear-gradient(160deg,#ff9ac1,#d85a9a)', pic:'👧', over:'На фоні вивіска «Школа №3»',
+    cap:'Ми з сестричкою Оленкою (8 р.) після уроків 💕', answer:['family','school'],
+    why:'Тут розкрито дані іншої людини — молодшої сестри: ім’я, вік, школу. Про рідних, особливо дітей, такого не публікують і завжди питають згоди батьків.'},
+   {id:'mall', geo:'ТРЦ «Мегамол», 3 поверх', bg:'linear-gradient(160deg,#ffb36b,#e05a8a)', pic:'🛍️', over:'',
+    cap:'Я зараз тут, чекаю подругу 💅', answer:['now'],
+    why:'Місцеперебування в реальному часі бачать усі. Відмічай місця вже після того, як пішла.'},
+   {id:'wifi', bg:'linear-gradient(160deg,#9fb4c8,#4a5a70)', pic:'📶', over:'Мережа «Rudenko_Home» · папірець з паролем на холодильнику',
+    cap:'Пароль від вайфаю на холодильнику — зручно ж 😂', answer:['secret'],
+    why:'Пароль від домашньої мережі дає доступ до пристроїв у ній. Ніколи не показуй паролі на фото — навіть «випадково» у кадрі.'},
+   {id:'trip', bg:'linear-gradient(160deg,#6be0b0,#2c9c7a)', pic:'🚂', over:'',
+    cap:'Їдемо всією сім’єю до бабусі на всі канікули! 🥰', answer:['away'],
+    why:'Разом з районом у біо — це повідомлення про порожню квартиру. Фото з поїздки краще викласти після повернення.'},
+   {id:'report', bg:'linear-gradient(160deg,#e0e0e0,#a0a0a0)', pic:'📄', over:'Табель: ПІБ, школа, клас, оцінки',
+    cap:'Закінчила семестр на відмінно! 🤓', answer:['doc','school'],
+    why:'Табель — документ з особистими даними. Похвалитися можна словами, без фото самого документа.'},
+   {id:'email', bg:'linear-gradient(160deg,#b06bff,#ff6bb5)', pic:'📸', over:'',
+    cap:'Фотки з вечірки будуть завтра! 🎉',
+    comments:[['katya_m','Аліно, яка в тебе пошта? Скину фото'],['alina.travels','alina.rudenko.vn@mail.example 💌']],
+    answer:['email'],
+    why:'Пошту передають в особистих повідомленнях. У відкритому коментарі її бачать усі, і вона ще й розкриває прізвище та місто.'},
+   {id:'shelter', bg:'linear-gradient(160deg,#ffd36b,#c9822a)', pic:'🐕', over:'',
+    cap:'Сьогодні гуляли з собаками з притулку 🐾 Приєднуйтесь до волонтерства!', answer:['none'],
+    why:'Розповідь про добру справу без геотегу і без розкладу — безпечна.'},
+   {id:'pancakes', bg:'linear-gradient(160deg,#ffcf8a,#e0a04a)', pic:'🥞', over:'',
+    cap:'Мій рецепт млинців — пишіть, якщо треба 😋', answer:['none'],
+    why:'Рецепти не розкривають персональних даних.'},
+   {id:'tulips', bg:'linear-gradient(160deg,#ff7aa0,#c2306b)', pic:'🌷', over:'',
+    cap:'Весна прийшла 🌷', answer:['none'],
+    why:'Звичайне фото квітів без геотегу — безпечне.'}
+  ],
+  chain:[
+   {q:'Аліна виклала фото сестри з назвою школи. Чому це особливо делікатно?',
+    a:['Не делікатно, це ж сестра','Це дані дитини, яка не давала згоди, і вони показують, де її знайти','Тільки тому, що фото невдале'], answer:1,
+    why:'Публікуючи інших, ти вирішуєш за них. Про дітей — тим більше: спершу згода батьків.'},
+   {q:'Пошта alina.rudenko.vn у коментарі. Що з неї можна дізнатися?',
+    a:['Нічого','Прізвище й місто — і куди надсилати шахрайські листи','Тільки ім’я'], answer:1,
+    why:'Навіть адреса пошти може містити персональні дані. Для соцмереж краще пошта без прізвища.'},
+   {q:'На фото паспорта номер прикрито пальцем. Тепер безпечно?',
+    a:['Так, номера ж не видно','Ні — фото, ПІБ, дата народження й підпис усе одно видно, їх можуть використати для обману','Так, якщо фото маленьке'], answer:1,
+    why:'Документ не стає безпечним від того, що частину прикрили. Його просто не публікують.'},
+   {q:'Пост «на всі канікули до бабусі» плюс район у біо. Що отримує незнайомець?',
+    a:['Що Аліна любить бабусю','Район і час, коли квартира порожня','Нічого'], answer:1,
+    why:'Дрібниці з різних дописів складаються в цілісну картину — це і є цифровий слід.'}
+  ],
+  cleanup:[
+   {text:'Біо з районом і віком', opts:['Прибрати район (і вік)','Залишити'], ok:[0], why:'Достатньо міста або нічого.'},
+   {text:'Фото закордонного паспорта', opts:['Видалити','Лише для друзів','Залишити'], ok:[0], why:'Документи не публікують навіть для друзів.'},
+   {text:'Фото сестри біля школи', opts:['Видалити, спитати згоди батьків','Залишити'], ok:[0], why:'Дані дітей — лише зі згоди батьків.'},
+   {text:'«Я зараз у ТРЦ»', opts:['Видалити (публікувати після)','Залишити'], ok:[0], why:'Місце в реальному часі не показують.'},
+   {text:'Пароль від Wi-Fi у кадрі', opts:['Видалити і змінити пароль Wi-Fi','Просто видалити допис','Залишити'], ok:[0], why:'Пароль, який могли побачити, змінюють.'},
+   {text:'«До бабусі на всі канікули»', opts:['Видалити, фото — після повернення','Залишити'], ok:[0], why:'Про відсутність удома не пишуть заздалегідь.'},
+   {text:'Фото табеля', opts:['Видалити фото табеля','Залишити'], ok:[0], why:'Похвалитися можна без документа.'},
+   {text:'Пошта в коментарі', opts:['Видалити коментар, пошту — в особисті','Залишити'], ok:[0], why:'Контакти — лише в особистих повідомленнях.'},
+   {text:'Пост про волонтерство', opts:['Залишити — це безпечно','Видалити'], ok:[0], why:'Добрі справи без геотегу показувати можна.'}
+  ]}
+];
+
+/* ===================================================================== */
+let P = PROFILES[0];
+const $ = id => document.getElementById(id);
+let G;
+function fresh(){ return {player:'', room:0, keys:0, score:0, t0:0, running:false,
+  found:{}, chainOk:0, chainN:0, rightsOk:0, rightsN:0, cleanOk:0, cleanN:0, setOk:0, setN:0, cleanTimeLeft:0,
+  cleanChoice:{}, setVal:{}, roomScore:[0,0,0,0]}; }
+G = fresh();
+
+function addScore(n, room){ G.score += n; G.roomScore[room] += n; $('score').textContent = G.score; }
+function setKeys(){ [...$('keys').children].forEach((s,i)=>s.classList.toggle('got', i<G.keys)); }
+setInterval(()=>{ if(!G.running) return; const s=Math.floor((Date.now()-G.t0)/1000); $('clock').textContent = Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }, 500);
+
+function modal(html, buttons){
+  $('modal').innerHTML = html + '<div class="row" id="mrow"></div>';
+  (buttons||[]).forEach(b=>{ const el=document.createElement('button'); el.textContent=b.text; if(b.primary) el.className='primary'; if(b.id) el.id=b.id; el.onclick=b.onClick; $('mrow').appendChild(el); });
+  $('overlay').classList.add('show'); $('modal').scrollTop = 0;
+}
+function closeModal(){ $('overlay').classList.remove('show'); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- старт ---------- */
+function profileFromHash(){
+  const h = (location.hash||'').replace('#','').toLowerCase();
+  return PROFILES.find(x=>x.id===h);
+}
+function start(preselect){
+  G = fresh(); setKeys(); $('score').textContent='0'; $('clock').textContent='0:00';
+  $('view').innerHTML = ''; $('whoName').textContent = 'Профіль';
+  const pre = preselect || (profileFromHash()||{}).id || '';
+  const cards = PROFILES.map(x=>`<label class="pcard"><input type="radio" name="prof" value="${x.id}" ${pre===x.id?'checked':''}>
+      <span class="pava" style="background:${x.avaBg}">${x.ava}</span><span><b>${x.name}</b><small>${x.handle} · ${x.tagline}</small></span></label>`).join('')
+    + `<label class="pcard"><input type="radio" name="prof" value="random" ${pre?'':'checked'}><span class="pava" style="background:#3a4266">🎲</span><span><b>Випадковий</b><small>гра обере сама</small></span></label>`;
+  modal(`<h2>🔍 Цифровий слід</h2>
+    <p>Ти — волонтер шкільного кіберпатруля. До тебе звернувся друг: йому здається, що про нього в мережі знають забагато. Пройди 4 кімнати і збери 4 ключі 🔑:</p>
+    <div class="card"><div class="big">🔎</div><div><h3>Кімната 1. Аудит</h3><p>Перевір кожен елемент профілю і визнач, які персональні дані він розкриває.</p></div></div>
+    <div class="card"><div class="big">🧩</div><div><h3>Кімната 2. Ланцюжок</h3><p>Як окремі дрібниці складаються в небезпечну картину.</p></div></div>
+    <div class="card"><div class="big">🧹</div><div><h3>Кімната 3. Прибери слід</h3><p>На час: почисти профіль і налаштуй приватність.</p></div></div>
+    <div class="card"><div class="big">⚖️</div><div><h3>Кімната 4. Твої права</h3><p>Що каже закон про твої персональні дані.</p></div></div>
+    <p><b>Чий профіль перевіряєш?</b></p>
+    <div class="picker">${cards}</div>
+    <p class="muted" style="font-size:13px">Усі персонажі й дані в грі вигадані.</p>
+    <p><label>Твоє ім’я та клас:<br><input id="pname" maxlength="40" placeholder="Напр.: Ірина С., 11-Б" style="width:100%;font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:#0d1124;color:var(--text)"></label></p>`,
+    [{text:'Почати', primary:true, onClick:()=>{
+      G.player=($('pname').value||'').trim()||'Гравець';
+      let v = (document.querySelector('input[name=prof]:checked')||{}).value || 'random';
+      P = v==='random' ? PROFILES[Math.floor(Math.random()*PROFILES.length)] : PROFILES.find(x=>x.id===v);
+      $('whoName').textContent = P.name;
+      modal(`<div class="card"><div class="big"><span class="pava" style="background:${P.avaBg}">${P.ava}</span></div><div><h3>${P.name} ${P.f?'написала':'написав'} тобі:</h3><p><i>«${P.msg}»</i></p></div></div>`,
+        [{text:'Відкрити профіль', primary:true, onClick:()=>{ G.t0=Date.now(); G.running=true; closeModal(); room1(); }}]);
+    }}]);
+}
+$('who').onclick = () => {
+  if ($('overlay').classList.contains('show')) return;
+  if (cleanTimer){ clearInterval(cleanTimer); cleanTimer=null; }
+  const resume = G.room===3 && G.cleanTimeLeft>0 && !$('done3')?.textContent.includes('ключ');
+  modal(`<h2>🔄 Обрати інший профіль?</h2><p>Поточний прогрес буде втрачено, і гра почнеться спочатку з іншим профілем.</p>`,
+    [{text:'Скасувати', onClick:()=>{ closeModal(); if(resume) cleanTimer=setInterval(tick3,1000); }},
+     {text:'Так, змінити', primary:true, onClick:()=>{ closeModal(); start(); }}]);
+};
+
+/* ---------- профіль ---------- */
+function postHTML(it){
+  if (it.kind==='bio') return '';
+  const cm = (it.comments||[]).map(([u,t])=>`<div class="cmt"><b>${esc(u)}</b> ${esc(t)}</div>`).join('');
+  return `<div class="ph"><div class="mini" style="background:${P.avaBg}">${P.ava}</div><div><b>${P.handle.slice(1)}</b>${it.geo?`<span class="geo">📍 ${esc(it.geo)}</span>`:''}</div></div>
+    <div class="pic" style="background:${it.bg}">${it.pic}${it.over?`<div class="over">${esc(it.over)}</div>`:''}</div>
+    <div class="cap"><b>${P.handle.slice(1)}</b> ${esc(it.cap)}</div>${cm}`;
+}
+function profileHTML(clickable){
+  const bio = P.items.find(i=>i.kind==='bio');
+  const posts = P.items.filter(i=>i.kind!=='bio');
+  const cls = id => clickable ? `chk ${G.found[id]?('done-'+G.found[id].res):''}` : '';
+  const badge = id => clickable && G.found[id] ? `<span class="badge">${G.found[id].res==='ok'?'✔':G.found[id].res==='part'?'≈':'✖'}</span>` : '';
+  return `<div class="phone"><div class="app">
+    <div class="appbar"><span>${APP_NAME}</span><small>${P.handle}</small></div>
+    <div class="prof"><div class="ava" style="background:${P.avaBg}">${P.ava}</div><div><div class="pname">${P.name}</div>
+      <div class="pstats"><span><b>${posts.length}</b> дописів</span><span><b>${P.followers}</b> підписники</span><span><b>${P.following}</b> підписки</span></div></div></div>
+    <div class="bio ${cls('bio')}" data-id="bio" style="position:relative">${badge('bio')}${esc(bio.text)}</div>
+    ${posts.map(p=>`<div class="post ${cls(p.id)}" data-id="${p.id}">${badge(p.id)}${postHTML(p)}</div>`).join('')}
+  </div></div>`;
+}
+
+/* ---------- Кімната 1 ---------- */
+function room1(){
+  G.room=1;
+  const total = P.items.length, done = Object.keys(G.found).length;
+  $('view').innerHTML = `<div class="stage"><div>${profileHTML(true)}</div>
+    <div class="side"><h2>🔎 Кімната 1. Аудит профілю</h2>
+      <p>Натискай на <b>біо</b> та кожен <b>допис</b> у профілі друга й визнач, які персональні дані він розкриває. В одному дописі може бути кілька типів даних — або жодного.</p>
+      <div class="prog"><i style="width:${done/total*100}%"></i></div>
+      <p>Перевірено: <b>${done}</b> з ${total}</p>
+      <p class="muted">Рамка: <span style="color:#2bb383">зелена</span> — точно, <span style="color:#f0a020">жовта</span> — частково, <span style="color:#e04848">червона</span> — помилка.</p>
+      <button class="primary ${done<total?'hidden':''}" id="toRoom2">Забрати ключ 🔑 і далі</button>
+    </div></div>`;
+  document.querySelectorAll('.chk').forEach(el=>el.onclick=()=>inspect(el.dataset.id));
+  const b = $('toRoom2'); if (b) b.onclick = ()=>{ G.keys=1; setKeys(); roomDone(1, room2); };
+}
+function inspect(id){
+  const it = P.items.find(i=>i.id===id);
+  const prev = it.kind==='bio' ? `<div style="padding:10px 12px;white-space:pre-line;font-size:14px">${esc(it.text)}</div>` : postHTML(it);
+  const already = G.found[id];
+  modal(`<h2>${it.kind==='bio'?'Біо профілю':'Допис'}</h2><div class="preview">${prev}</div>
+    <p><b>Які персональні дані тут розкрито?</b> Познач усе, що бачиш.</p>
+    <div class="opts" id="opts">${Object.entries(TYPES).map(([k,v])=>`<label data-k="${k}"><input type="checkbox" value="${k}">${v}</label>`).join('')}</div>
+    <div id="fbx"></div>`,
+    [{text:'Скасувати', onClick:closeModal},{text:'Перевірити', primary:true, id:'checkBtn', onClick:()=>check(it)}]);
+  const boxes = [...document.querySelectorAll('#opts input')];
+  boxes.forEach(b=>b.onchange=()=>{ if(b.value==='none' && b.checked) boxes.forEach(x=>{ if(x!==b) x.checked=false; });
+                                    if(b.value!=='none' && b.checked) boxes.find(x=>x.value==='none').checked=false; });
+  if (already){ already.sel.forEach(k=>{ boxes.find(x=>x.value===k).checked=true; }); showFeedback(it, already.sel, true); }
+}
+function check(it){
+  const sel = [...document.querySelectorAll('#opts input:checked')].map(b=>b.value);
+  if (!sel.length){ $('fbx').innerHTML = '<div class="fb part">Обери хоча б один варіант.</div>'; return; }
+  const ans = new Set(it.answer);
+  const hit = sel.filter(k=>ans.has(k)).length, wrong = sel.filter(k=>!ans.has(k)).length;
+  let res = (hit===ans.size && !wrong) ? 'ok' : hit>0 ? 'part' : 'bad';
+  const pts = res==='ok' ? 100 : res==='part' ? 40 : 0;
+  G.found[it.id] = {sel, res}; addScore(pts, 0);
+  showFeedback(it, sel, false, pts);
+}
+function showFeedback(it, sel, readonly, pts){
+  const ans = new Set(it.answer);
+  document.querySelectorAll('#opts label').forEach(l=>{
+    const k=l.dataset.k, s=sel.includes(k); l.querySelector('input').disabled = true;
+    if (s && ans.has(k)) l.classList.add('right'); else if (s) l.classList.add('wrong'); else if (ans.has(k)) l.classList.add('missed');
+  });
+  const r = G.found[it.id].res;
+  const head = r==='ok'?'✅ Точно!':r==='part'?'🟡 Частково.':'❌ Не зовсім.';
+  $('fbx').innerHTML = `<div class="fb ${r}"><b>${head}</b>${pts!==undefined&&!readonly?` +${pts} ⭐`:''}<br>Правильно: ${it.answer.map(k=>TYPES[k]).join(', ')}.<br>${it.why}</div>`;
+  const row = $('mrow'); row.innerHTML='';
+  const b = document.createElement('button'); b.className='primary'; b.textContent='Далі'; b.onclick=()=>{ closeModal(); room1(); }; row.appendChild(b);
+}
+
+function roomDone(n, next){
+  const titles = ['','Аудит завершено','Ланцюжок розплутано','Профіль почищено','Права знаєш'];
+  modal(`<h2>🔑 Ключ ${n} з 4!</h2><p><b>${titles[n]}.</b> Бали за кімнату: <b>${G.roomScore[n-1]}</b> ⭐</p>`,
+    [{text: n<4?'До наступної кімнати':'Фінал', primary:true, onClick:()=>{ closeModal(); next(); }}]);
+}
+
+/* ---------- Кімнати 2 і 4: питання ---------- */
+function quizRoom(roomN, title, intro, list, okKey, nKey, next){
+  G.room = roomN; let k = 0;
+  const draw = () => {
+    $('view').innerHTML = `<div class="stage"><div>${profileHTML(false)}</div>
+      <div class="side"><h2>${title}</h2><p>${intro}</p>
+      <div class="prog"><i style="width:${k/list.length*100}%"></i></div><p>Питання ${Math.min(k+1,list.length)} з ${list.length}</p></div></div>`;
+  };
+  const ask = () => {
+    draw();
+    if (k>=list.length){ G.keys=roomN; setKeys(); return roomDone(roomN, next); }
+    const q = list[k];
+    modal(`<h2>${title}</h2><p class="muted">Питання ${k+1} з ${list.length} · +75 ⭐ за правильну відповідь</p><p><b>${q.q}</b></p><div id="qo"></div><div id="qw"></div>`, []);
+    const box = $('qo'); let done=false;
+    q.a.forEach((t,i)=>{ const b=document.createElement('button'); b.className='qopt'; b.textContent=t;
+      b.onclick=()=>{ if(done) return; done=true; G[nKey]++;
+        const ok = i===q.answer; if(ok){ G[okKey]++; addScore(75, roomN-1); }
+        [...box.children].forEach((c,j)=>{ if(j===q.answer) c.classList.add('right'); else if(j===i) c.classList.add('wrong'); });
+        $('qw').innerHTML = `<div class="fb ${ok?'ok':'bad'}"><b>${ok?'✅ Так!':'❌ Ні.'}</b> ${q.why}</div>`;
+        const nb=document.createElement('button'); nb.className='primary'; nb.textContent='Далі'; nb.onclick=()=>{ k++; ask(); }; $('mrow').appendChild(nb);
+      }; box.appendChild(b); });
+  };
+  ask();
+}
+function room2(){ quizRoom(2,'🧩 Кімната 2. Ланцюжок','Кожна дрібниця окремо здається безпечною. Подивимось, що буде, якщо скласти їх разом.', P.chain,'chainOk','chainN', room3); }
+function room4(){ quizRoom(4,'⚖️ Кімната 4. Твої права','Персональні дані захищає закон. Перевір, чи знаєш ти свої права.', RIGHTS,'rightsOk','rightsN', finish); }
+
+/* ---------- Кімната 3: прибери слід ---------- */
+let cleanTimer=null;
+function room3(){
+  G.room=3; G.cleanChoice={}; G.setVal={};
+  G.cleanOrder = P.cleanup.map(c=>c.opts.map((o,j)=>j).sort(()=>Math.random()-.5));
+  SETTINGS.forEach(s=>G.setVal[s.id]=s.start);
+  G.cleanTimeLeft = CLEAN_TIME;
+  modal(`<h2>🧹 Кімната 3. Прибери слід</h2>
+    <p>${P.name} ${P.f?'дала':'дав'} тобі доступ до свого профілю на <b>${CLEAN_TIME} секунд</b>. Встигни:</p>
+    <div class="card"><div class="big">🗑</div><div><h3>Вирішити долю дописів</h3><p>Для кожного небезпечного допису обери правильну дію.</p></div></div>
+    <div class="card"><div class="big">⚙️</div><div><h3>Налаштувати приватність</h3><p>Перемикачі зараз стоять так, як їх ${P.f?'залишила':'залишив'} ${P.name}. Виправ їх.</p></div></div>
+    <p class="muted">Чим швидше впораєшся — тим більше бонусних балів.</p>`,
+    [{text:'Почати відлік', primary:true, onClick:()=>{ closeModal(); drawRoom3(); cleanTimer=setInterval(tick3,1000); }}]);
+}
+function drawRoom3(){
+  const items = P.cleanup.map((c,i)=>`<div class="item" id="ci${i}"><div class="t">${esc(c.text)}</div>
+      <div class="seg">${G.cleanOrder[i].map(j=>`<button data-i="${i}" data-j="${j}" class="${G.cleanChoice[i]===j?'on':''}">${esc(c.opts[j])}</button>`).join('')}</div><div class="why hidden">${c.why}</div></div>`).join('');
+  const sets = SETTINGS.map(s=>{
+    let ctl;
+    if (s.type==='switch') ctl = `<button class="switch ${G.setVal[s.id]?'on':''}" data-s="${s.id}" aria-label="${esc(s.label)}"></button>`;
+    else ctl = `<select data-s="${s.id}">${s.opts.map(o=>`<option ${G.setVal[s.id]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    return `<div class="set" id="set_${s.id}"><span>${esc(s.label)}</span>${ctl}</div>`;
+  }).join('');
+  $('view').innerHTML = `<div class="box" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+      <div><b>🧹 Кімната 3. Прибери слід</b><br><span class="muted">Обери дію для кожного допису та виправ налаштування.</span></div>
+      <div style="display:flex;gap:12px;align-items:center"><span class="timer" id="t3">${fmt(G.cleanTimeLeft)}</span><button class="primary" id="done3">Готово, перевірити</button></div></div>
+    <div class="lvl3"><div class="box"><h3>🗑 Дописи</h3>${items}</div><div class="box"><h3>⚙️ Налаштування приватності</h3>${sets}</div></div>`;
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ G.cleanChoice[+b.dataset.i]=+b.dataset.j; b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); });
+  document.querySelectorAll('.switch').forEach(b=>b.onclick=()=>{ G.setVal[b.dataset.s]=!G.setVal[b.dataset.s]; b.classList.toggle('on', G.setVal[b.dataset.s]); });
+  document.querySelectorAll('select[data-s]').forEach(s=>s.onchange=()=>{ G.setVal[s.dataset.s]=s.value; });
+  $('done3').onclick = finish3;
+}
+function fmt(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function tick3(){
+  G.cleanTimeLeft--; const el=$('t3'); if(el){ el.textContent=fmt(Math.max(0,G.cleanTimeLeft)); el.classList.toggle('low',G.cleanTimeLeft<=20); }
+  if (G.cleanTimeLeft<=0) finish3();
+}
+function finish3(){
+  clearInterval(cleanTimer); cleanTimer=null;
+  let ok=0, sok=0;
+  P.cleanup.forEach((c,i)=>{ const good = c.ok.includes(G.cleanChoice[i]); if(good) ok++;
+    const el=$('ci'+i); el.classList.add(good?'good':'badd'); el.querySelector('.why').classList.remove('hidden');
+    el.querySelectorAll('button').forEach(b=>b.disabled=true); });
+  SETTINGS.forEach(s=>{ const v=G.setVal[s.id]; const good = Array.isArray(s.ok) ? s.ok.includes(v) : v===s.ok; if(good) sok++;
+    const el=$('set_'+s.id); el.classList.add(good?'good':'badd'); el.querySelectorAll('button,select').forEach(x=>x.disabled=true); });
+  G.cleanOk=ok; G.cleanN=P.cleanup.length; G.setOk=sok; G.setN=SETTINGS.length;
+  const base = ok*40 + sok*40;
+  const perfect = ok===P.cleanup.length && sok===SETTINGS.length;
+  const timeBonus = Math.max(0,G.cleanTimeLeft)*2 * ((ok+sok)/(P.cleanup.length+SETTINGS.length));
+  addScore(Math.round(base+timeBonus), 2);
+  const b=$('done3'); b.textContent='Забрати ключ 🔑 і далі'; b.onclick=()=>{ G.keys=3; setKeys(); roomDone(3, room4); };
+  const t=$('t3'); t.textContent = `✔ ${ok+sok}/${P.cleanup.length+SETTINGS.length}`; t.classList.remove('low');
+  modal(`<h2>${perfect?'🌟 Ідеально!':'Перевірка завершена'}</h2>
+    <p>Дописи: <b>${ok}</b> з ${P.cleanup.length} · Налаштування: <b>${sok}</b> з ${SETTINGS.length}${G.cleanTimeLeft>0?` · Залишилось часу: <b>${G.cleanTimeLeft} с</b>`:' · Час вичерпано'}</p>
+    <p>Зелені рамки — правильно, червоні — подивись пояснення під дописами та налаштування, позначені червоним.</p>
+    <div class="card"><div class="big">⚙️</div><div><h3>Правильні налаштування</h3><p>Профіль закритий · геолокація у фото вимкнена · номер бачать лише друзі або ніхто · пошук за номером вимкнений · позначки лише з підтвердженням · дата народження прихована · 2FA і сповіщення про вхід увімкнені · зайві дозволи застосункам вимкнені.</p></div></div>`,
+    [{text:'Переглянути', primary:true, onClick:closeModal}]);
+}
+
+/* ---------- фінал ---------- */
+function finish(){
+  G.running=false; G.keys=4; setKeys();
+  const secs = Math.floor((Date.now()-G.t0)/1000);
+  const vals = Object.values(G.found);
+  const okA = vals.filter(v=>v.res==='ok').length;
+  const maxScore = P.items.length*100 + P.chain.length*75 + (P.cleanup.length+SETTINGS.length)*40 + 150 + RIGHTS.length*75;
+  const pct = Math.round(G.score/maxScore*100);
+  const chk = (G.score*11 + G.player.length*7 + okA*3) % 97;
+  const code = makeCode('ЦС',G.score,G.player);
+  const rank = pct>=85?'🏆 Охоронець цифрового сліду':pct>=65?'🥇 Пильний кіберпатрульний':pct>=45?'🥈 Уважний користувач':'🥉 Початківець';
+  const missed = P.items.filter(i=>G.found[i.id] && G.found[i.id].res!=='ok');
+  const date = new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const summary = `Цифровий слід — ${G.player}, ${date}, профіль: ${P.name}\nАудит: ${okA}/${P.items.length}; ланцюжок: ${G.chainOk}/${G.chainN}; дописи: ${G.cleanOk}/${G.cleanN}; налаштування: ${G.setOk}/${G.setN}; права: ${G.rightsOk}/${G.rightsN}\nБали: ${G.score} (${pct}%); код: ${code}\nУчень: ${G.player}\nКод: ${code}`;
+  $('view').innerHTML = `<div class="stage"><div>${profileHTML(false)}</div><div class="side"><h2>🎉 Квест пройдено</h2><p>Профіль друга у безпеці. Дякуємо за роботу, кіберпатрульний!</p></div></div>`;
+  modal(`<h2>🎉 Усі 4 ключі зібрано!</h2>
+    <p><b>${esc(G.player)}</b> · профіль: ${P.ava} ${P.name} · ${date}</p>
+    <p style="font-size:18px">${rank}</p>
+    <p><i>«Дякую! Я й не ${P.f?'думала':'думав'}, що з моїх дописів можна стільки дізнатися» — ${P.name}</i></p>
+    <table class="res">
+      <tr><td>🔎 Аудит: точно визначено</td><td>${okA} з ${P.items.length}</td></tr>
+      <tr><td>🧩 Ланцюжок: правильних відповідей</td><td>${G.chainOk} з ${G.chainN}</td></tr>
+      <tr><td>🧹 Дописи: правильні дії</td><td>${G.cleanOk} з ${G.cleanN}</td></tr>
+      <tr><td>⚙️ Налаштування приватності</td><td>${G.setOk} з ${G.setN}</td></tr>
+      <tr><td>⚖️ Права: правильних відповідей</td><td>${G.rightsOk} з ${G.rightsN}</td></tr>
+      <tr><td>Час проходження</td><td>${fmt(secs)}</td></tr>
+      <tr><td><b>Загальний рахунок</b></td><td>${G.score} ⭐ (${pct}%)</td></tr>
+    </table>
+    <p>Код результату для вчителя: <span class="code">${code}</span></p>
+    ${missed.length?`<h3 style="margin:14px 0 4px">Зверни увагу</h3>`+missed.map(i=>`<div class="card"><div class="big">${i.pic||'📝'}</div><div><h3>${esc(i.cap||'Біо профілю')}</h3><p>Правильно: ${i.answer.map(k=>TYPES[k]).join(', ')}.</p></div></div>`).join(''):''}
+    <h3 style="margin:14px 0 4px">Правила цифрового сліду</h3>
+    <p>🏠 Не показуй адресу, школу з класом і розклад · 🪪 Ніколи не публікуй документи, квитки, картки · 📞 Номер — лише в особистих · 🧳 Фото з відпочинку — після повернення · ❓ Не відповідай на «опитування» з контрольними питаннями · 🔒 Закритий профіль, без геотегів, з 2FA · 🤝 Питай згоди, перш ніж викладати інших.</p>`,
+    [{text:'📋 Копіювати результат', onClick:(e)=>{ const b=e.target; try{ navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати'); }catch(err){ b.textContent='Не вдалося скопіювати'; } }},
+     {text:'🖨 Друк / PDF', onClick:()=>{ try{ window.print(); }catch(e){} }},
+     {text:'Грати знову', primary:true, onClick:()=>{ closeModal(); start(); }}]);
+  try{ const best=+localStorage.getItem('traceBest')||0; if(G.score>best) localStorage.setItem('traceBest',G.score); }catch(e){}
+}
+
+start();
+</script>
+</body>
+</html>

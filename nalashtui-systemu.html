@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Налаштуй систему — симулятор безпеки ОС</title>
+<style>
+  :root{
+    --bg:#1b1f27; --side:#20252f; --card:#2a303c; --card2:#323947; --line:#3b4354; --text:#e9edf5; --muted:#a3adc2;
+    --acc:#4cc2ff; --ok:#3ccf8e; --mid:#f2c14e; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+  .app{max-width:1020px;margin:0 auto;display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+  aside{background:var(--side);padding:18px 12px;border-right:1px solid var(--line)}
+  .me{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+  .me .av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4cc2ff,#7a5cff);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .me b{display:block;font-size:14px}.me span{font-size:12px;color:var(--muted)}
+  .nav{display:block;width:100%;text-align:left;font:inherit;font-size:14px;color:var(--text);background:none;border:0;border-radius:6px;padding:9px 10px;cursor:pointer;position:relative}
+  .nav.on{background:var(--card)}
+  .nav.on:before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--acc)}
+  .nav{display:flex!important;justify-content:space-between;gap:8px}
+  .nav .cnt{font-size:12px;color:var(--muted);flex:none}
+  main{padding:22px 24px}
+  h1{font-size:26px;font-weight:600;margin:0 0 4px}
+  .lead{color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .set{background:var(--card);border-radius:8px;padding:14px 16px;margin-bottom:6px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .set .ic{font-size:22px;width:30px;text-align:center}
+  .set .tx{flex:1;min-width:220px}
+  .set .tx b{font-weight:600;font-size:15px}.set .tx div{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.4}
+  select{font:inherit;font-size:14px;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 10px;min-width:230px}
+  .tg{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);cursor:pointer;user-select:none}
+  .tg i{width:42px;height:22px;border-radius:11px;border:1px solid var(--muted);position:relative;transition:.2s}
+  .tg i:after{content:"";position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:.2s}
+  .tg.on i{background:var(--acc);border-color:var(--acc)}.tg.on i:after{left:24px;background:#10202c}
+  .tg.on{color:var(--text)}
+  .mark{font-size:12.5px;font-weight:700;padding:3px 8px;border-radius:5px;margin-left:auto}
+  .mark.best{background:#1e4a37;color:var(--ok)}.mark.ok{background:#4a3f1c;color:var(--mid)}.mark.bad{background:#4d2626;color:var(--bad)}
+  .why{flex-basis:100%;font-size:13.5px;line-height:1.45;color:#cfd6e4;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+  .bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .btn{font:inherit;font-size:14.5px;border-radius:6px;padding:9px 16px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#0b1a24;font-weight:600}
+  .btn:disabled{opacity:.5;cursor:default}
+  .attack{background:var(--card);border-radius:8px;padding:12px 14px;margin:8px 0;display:flex;gap:12px;align-items:flex-start;border-left:4px solid var(--line)}
+  .attack.blocked{border-color:var(--ok)}.attack.partial{border-color:var(--mid)}.attack.hit{border-color:var(--bad)}
+  .attack .ic{font-size:26px}
+  .attack b{display:block;margin-bottom:3px}
+  .attack div{font-size:13.5px;line-height:1.45;color:#cfd6e4}
+  input[type=text]{width:100%;max-width:360px;font:inherit;padding:9px 11px;border-radius:6px;border:1px solid var(--line);background:var(--card2);color:var(--text)}
+  table.res{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+  table.res td{padding:7px 4px;border-bottom:1px solid var(--line)}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:19px;border:1px dashed var(--acc);border-radius:8px;padding:6px 12px;display:inline-block;background:#18303d}
+  .muted{color:var(--muted)}
+  @media (max-width:760px){.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}}
+  @media print{body{background:#fff;color:#000}aside,.bottom{display:none}.set,.attack{background:#f2f2f2;color:#000}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="me"><div class="av">💻</div><div><b id="uname">Новий ноутбук</b><span>Ліцей · локальний пристрій</span></div></div>
+    <div id="nav"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати параметри, оцінки й пояснення.
+   Тема: «Засоби безпеки операційної системи» (Тема 1.4).
+   Кожен параметр: розділ, варіанти (opts) з оцінкою kind і поясненням why.
+   protects — від яких атак захищає найкращий варіант (див. ATTACKS).
+   ===================================================================== */
+const SECTIONS = ['Облікові записи','Конфіденційність і захист','Windows Update','Пристрої'];
+const SETTINGS = [
+ {id:'acc', sec:0, ic:'👤', name:'Обліковий запис для щоденної роботи', hint:'Під яким записом ти працюватимеш щодня?',
+  opts:[
+   {t:'Адміністратор', kind:'bad', why:'Будь-яка програма, запущена від адміністратора, може змінити систему — і шкідлива теж.'},
+   {t:'Стандартний користувач', kind:'best', why:'Для щоденної роботи — стандартний запис. Адміністратора використовують лише для встановлення програм.'}]},
+ {id:'pin', sec:0, ic:'🔑', name:'Вхід у систему', hint:'Як захистити вхід?',
+  opts:[
+   {t:'Без пароля', kind:'bad', why:'Будь-хто, хто відкриє кришку ноутбука, отримає всі твої дані.'},
+   {t:'PIN-код 1234', kind:'bad', why:'1234 — найпопулярніший PIN у світі, його вгадують першим.'},
+   {t:'Надійний пароль або PIN із 6+ неочевидних цифр', kind:'best', why:'Надійний пароль чи PIN не підбереш навмання, а система блокує вхід після кількох помилок.'}]},
+ {id:'lock', sec:0, ic:'⏱', name:'Автоматичне блокування екрана', hint:'Коли блокувати екран, якщо ти відійшов?',
+  opts:[
+   {t:'Ніколи', kind:'bad', why:'Відійшов на перерву — і будь-хто може скористатися твоїм відкритим акаунтом.'},
+   {t:'Через 2 години', kind:'ok', why:'Краще, ніж ніколи, але за 2 години можна встигнути все.'},
+   {t:'Через 5 хвилин', kind:'best', why:'Короткий час блокування + звичка натискати Win + L, коли відходиш.'}]},
+ {id:'av', sec:1, ic:'🛡', name:'Захист від вірусів у реальному часі', hint:'Вбудований антивірус',
+  toggle:true, opts:[{t:'Вимкнено',kind:'bad',why:'Без захисту в реальному часі шкідливий файл запуститься непомітно.'},{t:'Увімкнено',kind:'best',why:'Антивірус перевіряє кожен файл під час відкриття і завантаження.'}]},
+ {id:'fw', sec:1, ic:'🧱', name:'Брандмауер', hint:'Фільтрує мережеві підключення',
+  toggle:true, opts:[{t:'Вимкнено',kind:'bad',why:'Без брандмауера будь-який пристрій у мережі може звертатися до відкритих служб твого ноутбука.'},{t:'Увімкнено',kind:'best',why:'Брандмауер блокує небажані вхідні підключення — особливо важливо в чужих і відкритих мережах.'}]},
+ {id:'uac', sec:1, ic:'🛑', name:'Контроль облікових записів (UAC)', hint:'Запит перед змінами системи',
+  opts:[
+   {t:'Ніколи не сповіщати', kind:'bad', why:'Програми змінюватимуть систему без твого відома.'},
+   {t:'Сповіщати, коли програми намагаються внести зміни', kind:'best', why:'Несподіване вікно UAC — сигнал, що якась програма хоче більше прав, ніж ти очікував.'}]},
+ {id:'ext', sec:1, ic:'📄', name:'Показувати розширення імен файлів', hint:'Провідник: «звіт.pdf» чи «звіт.pdf.exe»?',
+  toggle:true, opts:[{t:'Вимкнено',kind:'bad',why:'Файл «звіт.pdf.exe» виглядатиме як «звіт.pdf» — і ти запустиш програму замість документа.'},{t:'Увімкнено',kind:'best',why:'Видно справжній тип файлу — підробку .pdf.exe помітно одразу.'}]},
+ {id:'enc', sec:1, ic:'🔐', name:'Шифрування диска', hint:'Захист даних, якщо ноутбук вкрадуть',
+  toggle:true, opts:[{t:'Вимкнено',kind:'ok',why:'Якщо ноутбук вкрадуть, диск можна вийняти й прочитати на іншому комп’ютері в обхід пароля.'},{t:'Увімкнено',kind:'best',why:'Зашифрований диск без ключа — це набір незрозумілих даних.'}]},
+ {id:'upd', sec:2, ic:'🔄', name:'Оновлення безпеки', hint:'Коли встановлювати?',
+  opts:[
+   {t:'Вимкнути оновлення', kind:'bad', why:'Кожне незакрите оновлення — відома всім вразливість.'},
+   {t:'Призупинити на 5 тижнів', kind:'ok', why:'Іноді доречно, але місяць без оновлень безпеки — великий ризик.'},
+   {t:'Встановлювати автоматично, перезапуск поза робочими годинами', kind:'best', why:'Оновлення приходять вчасно й не заважають роботі.'}]},
+ {id:'usb', sec:3, ic:'🔌', name:'Автозапуск для знімних носіїв', hint:'Що робити, коли вставлено флешку?',
+  opts:[
+   {t:'Автоматично запускати програми з носія', kind:'bad', why:'Шкідлива програма з флешки запуститься сама, щойно її вставлять.'},
+   {t:'Запитувати щоразу', kind:'best', why:'Ти сам вирішуєш, що відкрити. Невідомі флешки взагалі краще не підключати.'},
+   {t:'Нічого не робити', kind:'best', why:'Найбезпечніший варіант: вміст носія відкриваєш вручну, після перевірки антивірусом.'}]}
+];
+/* Атаки, які перевіряють налаштування: need — від яких параметрів залежить захист */
+const ATTACKS = [
+ {ic:'🧳', name:'Ноутбук забули в автобусі', need:['pin','enc'], ok:'Зловмисник не зміг ні увійти, ні прочитати диск.', hit:'Знахідник отримав доступ до всіх файлів і акаунтів.'},
+ {ic:'🚶', name:'Ти вийшов на перерву, ноутбук відкритий', need:['lock'], ok:'Екран заблокувався — однокласник побачив лише вікно входу.', hit:'Хтось написав від твого імені в чат класу.'},
+ {ic:'📎', name:'Файл «звіт.pdf.exe» у листі', need:['ext','av','acc','uac'], ok:'Підробку видно за розширенням, антивірус її заблокував.', hit:'Троян запустився і закріпився в системі.'},
+ {ic:'🔌', name:'Чужа флешка «Фото з випускного»', need:['usb','av'], ok:'Нічого не запустилося само, а антивірус знайшов шкідливу програму.', hit:'Програма з флешки запустилася автоматично.'},
+ {ic:'🐛', name:'Мережевий черв’як у шкільній мережі', need:['upd','fw'], ok:'Вразливість уже закрита оновленням, брандмауер відкинув підключення.', hit:'Черв’як скористався незакритою вразливістю й заразив ноутбук.'}
+];
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+function fresh(){ return {player:'',sec:0,val:{},checked:false,t0:Date.now()}; }
+const isBest = id => { const s=SETTINGS.find(x=>x.id===id); return S.val[id]!=null && s.opts[S.val[id]].kind==='best'; };
+
+function nav(){
+  $('nav').innerHTML = SECTIONS.map((n,k)=>{ const all=SETTINGS.filter(s=>s.sec===k); const done=all.filter(s=>S.val[s.id]!=null).length;
+    return `<button class="nav ${k===S.sec&&!S.checked?'on':''}" data-k="${k}">${n}<span class="cnt">${done}/${all.length}</span></button>`; }).join('')
+    + `<button class="nav ${S.checked?'on':''}" id="navchk" style="margin-top:12px">🧪 Перевірка безпеки</button>`;
+  document.querySelectorAll('.nav[data-k]').forEach(b=>b.onclick=()=>{ if(S.checked) return; S.sec=+b.dataset.k; page(); });
+  $('navchk').onclick=()=>{ if(!S.checked) page(); };
+}
+
+function start(){
+  S=fresh(); $('uname').textContent='Новий ноутбук';
+  $('nav').innerHTML='';
+  $('main').innerHTML=`<h1>Налаштуй систему</h1>
+   <p class="lead">Ліцей видав тобі новий ноутбук із заводськими налаштуваннями. Перш ніж віддати його в роботу, пройди всі розділи параметрів і обери безпечні налаштування. Потім запусти <b>перевірку безпеки</b>: на ноутбук «нападуть» п’ять типових загроз.</p>
+   <p class="muted">Налаштування можна змінювати скільки завгодно, поки не натиснеш «Перевірити».</p>
+   <label>Твоє ім’я та клас:<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Артем Г., 10-Б"></label>
+   <div class="bottom"><span></span><button class="btn primary" id="go">Відкрити параметри ⚙️</button></div>`;
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; $('uname').textContent=S.player; S.t0=Date.now(); page(); };
+}
+
+function page(){
+  nav();
+  const items = SETTINGS.filter(s=>s.sec===S.sec);
+  const filled = SETTINGS.filter(s=>S.val[s.id]!=null).length;
+  $('main').innerHTML = `<h1>${SECTIONS[S.sec]}</h1><p class="lead">Заповнено ${filled} з ${SETTINGS.length} параметрів.</p>` +
+    items.map(s=>`<div class="set"><div class="ic">${s.ic}</div><div class="tx"><b>${esc(s.name)}</b><div>${esc(s.hint)}</div></div>${
+      s.toggle ? `<span class="tg ${S.val[s.id]===1?'on':''}" data-id="${s.id}"><span>${S.val[s.id]===1?'Увімкнено':S.val[s.id]===0?'Вимкнено':'Не задано'}</span><i></i></span>`
+               : `<select data-id="${s.id}"><option value="">— обери —</option>${s.opts.map((o,k)=>`<option value="${k}" ${S.val[s.id]===k?'selected':''}>${esc(o.t)}</option>`).join('')}</select>`
+    }</div>`).join('') +
+    `<div class="bottom"><span>${S.sec>0?'<button class="btn" id="prev">← Назад</button>':''}</span>
+      ${S.sec<SECTIONS.length-1?'<button class="btn primary" id="nxt">Далі →</button>':`<button class="btn primary" id="chk" ${filled<SETTINGS.length?'disabled':''}>🧪 Перевірити безпеку</button>`}</div>
+     ${S.sec===SECTIONS.length-1&&filled<SETTINGS.length?'<p class="muted">Щоб запустити перевірку, задай усі параметри в усіх розділах.</p>':''}`;
+  document.querySelectorAll('select[data-id]').forEach(el=>el.onchange=()=>{ S.val[el.dataset.id]= el.value===''?null:+el.value; page(); });
+  document.querySelectorAll('.tg[data-id]').forEach(el=>el.onclick=()=>{ const id=el.dataset.id; S.val[id] = S.val[id]===1?0:1; page(); });
+  if ($('prev')) $('prev').onclick=()=>{ S.sec--; page(); };
+  if ($('nxt')) $('nxt').onclick=()=>{ S.sec++; page(); };
+  if ($('chk')) $('chk').onclick=check;
+}
+
+function check(){
+  S.checked=true; nav();
+  const res = ATTACKS.map(a=>{ const okN=a.need.filter(isBest).length; return {a, st: okN===a.need.length?'blocked':okN>0?'partial':'hit'}; });
+  const score = SETTINGS.reduce((s,x)=>s+(x.opts[S.val[x.id]].kind==='best'?10:x.opts[S.val[x.id]].kind==='ok'?5:0),0)
+              + res.reduce((s,r)=>s+(r.st==='blocked'?10:r.st==='partial'?4:0),0);
+  const max = SETTINGS.length*10 + ATTACKS.length*10, pct=Math.round(score/max*100);
+  const blocked=res.filter(r=>r.st==='blocked').length;
+  const chk=(score*23+S.player.length*7+blocked)%97, code=makeCode('НС',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const summary=`Налаштуй систему — ${S.player}, ${date}\nАтак відбито: ${blocked}/${ATTACKS.length}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  $('main').innerHTML = `<h1>🧪 Перевірка безпеки</h1><p class="lead">${esc(S.player)} · ${date} · Відбито атак: <b>${blocked} з ${ATTACKS.length}</b></p>
+    ${res.map(r=>`<div class="attack ${r.st}"><div class="ic">${r.a.ic}</div><div><b>${r.st==='blocked'?'✅':r.st==='partial'?'⚠️':'❌'} ${esc(r.a.name)}</b><div>${r.st==='blocked'?esc(r.a.ok):r.st==='partial'?'Частково захищено: '+esc(r.a.hit):esc(r.a.hit)}</div>
+      <div class="muted">Від чого залежало: ${r.a.need.map(id=>{const s=SETTINGS.find(x=>x.id===id);return (isBest(id)?'✔ ':'✘ ')+s.name;}).join(' · ')}</div></div></div>`).join('')}
+    <h2 style="font-size:19px;margin-top:20px">Твої налаштування</h2>
+    ${SETTINGS.map(s=>{const o=s.opts[S.val[s.id]];const best=s.opts.find(x=>x.kind==='best');return `<div class="set"><div class="ic">${s.ic}</div><div class="tx"><b>${esc(s.name)}</b><div>${esc(o.t)}</div></div><span class="mark ${o.kind}">${o.kind==='best'?'безпечно':o.kind==='ok'?'можна краще':'ризик'}</span><div class="why">${esc(o.why)}${o.kind!=='best'?` <b>Краще:</b> ${esc(best.t)}.`:''}</div></div>`;}).join('')}
+    <table class="res"><tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td><b>Рахунок</b></td><td>${score} з ${max} (${pct}%)</td></tr></table>
+    <p>Код результату для вчителя: <span class="code">${code}</span></p>
+    <div class="bottom"><span></span><span><button class="btn" id="copy">📋 Копіювати результат</button> <button class="btn" id="prn">🖨 Друк / PDF</button> <button class="btn primary" id="again">Налаштувати знову</button></span></div>`;
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати');}catch(err){b.textContent='Не вдалося скопіювати';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=start;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+start();
+</script>
+</body>
+</html>

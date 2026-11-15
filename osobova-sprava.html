@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Особова справа — гра про персональні дані в діловодстві</title>
+<style>
+  :root{
+    --desk:#6b4f3a; --paper:#fffaf0; --paper2:#f6eedb; --ink:#2b2a33; --muted:#7b7263; --line:#e3d7bd;
+    --acc:#1f4e8c; --ok:#2e7d32; --mid:#b7791f; --bad:#c62828; --stamp:#c0392b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;color:var(--ink);font-family:Georgia,"Times New Roman",serif;
+       background:repeating-linear-gradient(90deg,#6f5340 0 60px,#674b38 60px 120px)}
+  .wrap{max-width:780px;margin:0 auto;padding:22px 12px}
+  .sheet{background:var(--paper);border-radius:3px;box-shadow:0 2px 0 #e9dfc6,0 4px 0 #ddd0b2,0 20px 40px rgba(0,0,0,.35);padding:26px 30px;position:relative}
+  .clip{position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:110px;height:28px;border-radius:6px;background:linear-gradient(#cfd5dc,#9aa3ad);box-shadow:0 2px 4px rgba(0,0,0,.3)}
+  .doc-h{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:14px}
+  .doc-h small{display:block;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .doc-h h1{margin:4px 0 0;font-size:24px}
+  .prog{display:flex;justify-content:space-between;font-family:"Segoe UI",system-ui,sans-serif;font-size:13px;color:var(--muted);margin-bottom:10px}
+  p{line-height:1.6;font-size:16px}
+  .sans{font-family:"Segoe UI",system-ui,sans-serif}
+  .field{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dotted #bfb193;flex-wrap:wrap}
+  .field .n{flex:1;min-width:220px;font-size:15.5px}
+  .field .n small{display:block;color:var(--muted);font-size:12.5px;font-family:"Segoe UI",system-ui,sans-serif}
+  .pill{font-family:"Segoe UI",system-ui,sans-serif;font-size:13px;padding:6px 11px;border-radius:16px;border:1px solid #c9bc9c;background:#fff;cursor:pointer}
+  .pill.sel{background:var(--acc);border-color:var(--acc);color:#fff}
+  .pill:disabled{cursor:default}
+  .pill.good{background:#e1f2e2;border-color:var(--ok);color:var(--ok)}.pill.wrong{background:#fbe0e0;border-color:var(--bad);color:var(--bad)}
+  .note{flex-basis:100%;font-family:"Segoe UI",system-ui,sans-serif;font-size:13px;line-height:1.45;color:#4a4436;background:var(--paper2);border-radius:6px;padding:7px 9px}
+  .memo{background:#fff6c9;border:1px solid #e9d98a;padding:12px 14px;transform:rotate(-.6deg);box-shadow:2px 3px 6px rgba(0,0,0,.12);font-family:"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.5;margin:6px 0 14px}
+  .memo b{display:block;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+  .choice{display:block;width:100%;text-align:left;margin:8px 0;padding:11px 13px;border-radius:4px;font-family:"Segoe UI",system-ui,sans-serif;font-size:15px;background:#fff;border:1px solid #cdbf9f;cursor:pointer;color:var(--ink)}
+  .choice:hover:not(:disabled){border-color:var(--acc)}
+  .choice:disabled{opacity:.55;cursor:default}
+  .choice.picked{opacity:1;border-width:2px}
+  .choice.picked.best{border-color:var(--ok);background:#e1f2e2}.choice.picked.ok{border-color:var(--mid);background:#fbefd5}.choice.picked.bad{border-color:var(--bad);background:#fbe0e0}
+  .fb{font-family:"Segoe UI",system-ui,sans-serif;font-size:14.5px;line-height:1.5;padding:10px 12px;border-left:4px solid;background:var(--paper2);margin-top:10px}
+  .fb.best{border-color:var(--ok)}.fb.ok{border-color:var(--mid)}.fb.bad{border-color:var(--bad)}
+  .row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .btn{font-family:"Segoe UI",system-ui,sans-serif;font-size:14.5px;padding:9px 16px;border-radius:4px;border:1px solid #b9ab88;background:#fff;cursor:pointer;color:var(--ink)}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .btn:disabled{opacity:.5;cursor:default}
+  input[type=text]{width:100%;font-family:"Segoe UI",system-ui,sans-serif;font-size:15px;padding:9px 11px;border:0;border-bottom:1px solid var(--ink);background:transparent}
+  .stamp{position:absolute;right:26px;top:70px;transform:rotate(-14deg);border:4px double var(--stamp);color:var(--stamp);font-family:"Segoe UI",system-ui,sans-serif;font-weight:800;font-size:22px;letter-spacing:2px;padding:6px 14px;border-radius:6px;opacity:.85;animation:st .5s}
+  @keyframes st{from{transform:rotate(-14deg) scale(2.2);opacity:0}to{transform:rotate(-14deg) scale(1);opacity:.85}}
+  table.res{width:100%;border-collapse:collapse;font-family:"Segoe UI",system-ui,sans-serif;font-size:14.5px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px dotted #bfb193}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:19px;border:1px dashed var(--acc);padding:6px 12px;display:inline-block;background:#fff}
+  .muted{color:var(--muted)}
+  @media print{body{background:#fff}.sheet{box-shadow:none}.row,.clip{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="sheet"><div class="clip"></div><div id="main"></div></div></div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати поля анкети, ситуації й пояснення.
+   Теми: «Організація документообігу в сучасній установі», «Кадрове діловодство» (Теми 2.3–2.4).
+   FIELDS: need:true — роботодавець має підстави просити ці дані; false — зайві дані.
+   Ліцей, працівниця та всі дані вигадані.
+   ===================================================================== */
+const FIELDS = [
+ {n:'Прізвище, ім’я, по батькові', need:true, why:'Без цього неможливо оформити жодного кадрового документа.'},
+ {n:'Дата народження', need:true, why:'Потрібна для кадрового обліку та звітності.'},
+ {n:'РНОКПП (податковий номер)', need:true, why:'Потрібен для нарахування зарплати й сплати податків.'},
+ {n:'Документ про освіту (диплом)', need:true, why:'Підтверджує кваліфікацію для посади вчителя.'},
+ {n:'Відомості про трудовий стаж', need:true, why:'Від стажу залежать умови оплати праці.'},
+ {n:'Контактний телефон', need:true, why:'Потрібен для робочого зв’язку з працівником.'},
+ {n:'Медична довідка про проходження медогляду', need:true, why:'Працівники закладів освіти проходять обов’язкові медичні огляди — потрібен висновок про придатність, а не діагнози.'},
+ {n:'Релігійні переконання', need:false, why:'Закон «Про захист персональних даних» прямо обмежує обробку даних про релігійні переконання. Для роботи вчителя вони не потрібні.'},
+ {n:'Членство в політичній партії', need:false, why:'Політичні погляди належать до особливо захищених даних і не стосуються трудових обов’язків.'},
+ {n:'Перелік діагнозів і хронічних хвороб', need:false, why:'Стан здоров’я — особливо чутливі дані. Роботодавцю достатньо висновку медогляду про придатність.'},
+ {n:'Посилання на особисті сторінки в соцмережах', need:false, why:'Особисте життя поза роботою не є підставою для збирання даних роботодавцем.'},
+ {n:'Плани щодо народження дітей', need:false, why:'Такі питання не стосуються роботи і можуть стати підставою для дискримінації.'}
+];
+const CASES = [
+ {from:'Директорка', text:'Особову справу нової вчительки сформовано. Куди її покласти?',
+  choices:[
+   {t:'У шафу, що замикається, у кабінеті діловода; доступ — лише відповідальні особи', kind:'best', why:'Особові справи зберігають так, щоб доступ до них мали лише ті, кому він потрібен за посадою.'},
+   {t:'На стіл секретаря — вона часто знадобиться', kind:'bad', why:'Документи з персональними даними на відкритому столі може переглянути будь-який відвідувач.'},
+   {t:'Відсканувати й покласти у спільну папку вчителів', kind:'bad', why:'У спільній папці копію паспорта й РНОКПП побачать усі колеги. Це витік персональних даних.'}]},
+ {from:'Учитель фізкультури', text:'Скинь мені номер телефону нової вчительки, хочу додати її в чат колективу!',
+  choices:[
+   {t:'Передати її контакт можна лише з її згоди — краще попросити її саму приєднатися до чату', kind:'best', why:'Дані, надані для кадрових цілей, не передають третім особам без згоди людини, навіть колегам.'},
+   {t:'Надіслати номер — це ж колега', kind:'bad', why:'Добрі наміри не змінюють правил: людина давала номер відділу кадрів, а не всьому колективу.'},
+   {t:'Надіслати номер і домашню адресу, щоб привітати її з днем народження', kind:'bad', why:'Ще гірше: адреса взагалі не потрібна для робочого чату.'}]},
+ {from:'Бухгалтерія', text:'Нам потрібні копії документів нового працівника для нарахування зарплати.',
+  choices:[
+   {t:'Передати через систему електронного документообігу з доступом лише для бухгалтерії', kind:'best', why:'Система документообігу фіксує, хто й коли отримав документ, і обмежує доступ до нього.'},
+   {t:'Скинути фото документів у загальний чат працівників', kind:'bad', why:'Загальний чат бачать усі його учасники, а фото документів залишаються в історії назавжди.'},
+   {t:'Надіслати на особисту пошту бухгалтерки', kind:'ok', why:'Отримає лише одна людина, але особиста пошта не контролюється установою. Краще робочі канали.'}]},
+ {from:'Невідома адреса: osvita-zvit@ukr-upravlinnia.info', text:'«Управління освіти. ТЕРМІНОВО до 12:00 надішліть список усіх працівників із датами народження, адресами та РНОКПП у відповідь на цей лист».',
+  choices:[
+   {t:'Перевірити запит через офіційні контакти управління, нічого не надсилати у відповідь', kind:'best', why:'Терміновість, невідомий домен і запит на масив персональних даних — ознаки фішингу. Офіційні запити надходять офіційними каналами.'},
+   {t:'Надіслати — управлінню відмовляти не можна', kind:'bad', why:'Список працівників з РНОКПП і адресами — «скарб» для шахраїв. Ти не перевірив, хто насправді надіслав лист.'},
+   {t:'Надіслати лише ПІБ і дати народження, без адрес', kind:'bad', why:'Навіть частина даних — це витік. Спершу перевіряють відправника.'}]},
+ {from:'Діловод', text:'Учителька звільнилася кілька років тому. Що робити з її особовою справою?',
+  choices:[
+   {t:'Зберігати в архіві протягом строку, встановленого законодавством, а потім знищити за актом', kind:'best', why:'Кадрові документи мають визначені строки зберігання. Знищують їх лише за актом, так, щоб дані неможливо було відновити.'},
+   {t:'Викинути в смітник — вона ж уже не працює', kind:'bad', why:'Документи з персональними даними на смітнику — пряма загроза людині, і порушення строків зберігання.'},
+   {t:'Використати аркуші як чернетки', kind:'bad', why:'Зворотний бік «чернетки» прочитає кожен, хто її візьме.'}]}
+];
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+function fresh(){ return {player:'',phase:0,i:0,form:{},formScore:0,cases:[],t0:Date.now()}; }
+
+function start(){
+  S=fresh();
+  $('main').innerHTML=`<div class="doc-h"><small>Ліцей № 7 · Кабінет діловодства</small><h1>Особова справа</h1></div>
+   <p>Ти — помічник діловода в ліцеї. До колективу приходить нова вчителька інформатики. Тобі треба <b>підготувати анкету</b> для її особової справи, а потім опрацювати кілька запитів, пов’язаних з її документами.</p>
+   <p class="muted sans" style="font-size:14px">Головне правило: збираємо лише ті персональні дані, які справді потрібні для роботи, і передаємо їх лише тим, кому вони потрібні.</p>
+   <label class="sans" style="font-size:14px">Твоє ім’я та клас:<input type="text" id="pname" maxlength="40" placeholder="Напр.: Вікторія С., 10-А"></label>
+   <div class="row"><button class="btn primary" id="go">Взятися до роботи</button></div>`;
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; S.t0=Date.now(); form(); };
+}
+
+function form(){
+  const order = FIELDS.map((f,k)=>k).sort(()=>Math.random()-.5);
+  $('main').innerHTML=`<div class="doc-h"><small>Етап 1 з 2 · Проєкт документа</small><h1>Анкета працівника</h1></div>
+   <p class="sans" style="font-size:15px">Для кожного поля визнач: <b>потрібно</b> вносити його до анкети чи це <b>зайві</b> дані?</p>
+   <div id="fields">${order.map(k=>`<div class="field" data-k="${k}"><div class="n">${esc(FIELDS[k].n)}</div>
+     <button class="pill" data-v="1">Потрібно</button><button class="pill" data-v="0">Зайве</button></div>`).join('')}</div>
+   <div class="row"><span class="muted sans" id="left" style="margin-right:auto;font-size:13.5px"></span><button class="btn primary" id="sub" disabled>Подати анкету на затвердження</button></div>`;
+  const upd=()=>{ const n=Object.keys(S.form).length; $('left').textContent=`Заповнено ${n} з ${FIELDS.length}`; $('sub').disabled=n<FIELDS.length; };
+  document.querySelectorAll('.field').forEach(el=>el.querySelectorAll('.pill').forEach(b=>b.onclick=()=>{
+    S.form[el.dataset.k]=b.dataset.v==='1'; el.querySelectorAll('.pill').forEach(x=>x.classList.toggle('sel',x===b)); upd(); }));
+  upd();
+  $('sub').onclick=()=>{
+    let right=0;
+    document.querySelectorAll('.field').forEach(el=>{
+      const f=FIELDS[+el.dataset.k], v=S.form[el.dataset.k], good=v===f.need; if(good) right++;
+      el.querySelectorAll('.pill').forEach(b=>{ b.disabled=true; b.classList.remove('sel'); if((b.dataset.v==='1')===v) b.classList.add(good?'good':'wrong'); });
+      el.insertAdjacentHTML('beforeend',`<div class="note">${good?'✔':'✘'} ${f.need?'<b>Потрібно.</b>':'<b>Зайве.</b>'} ${esc(f.why)}</div>`);
+    });
+    S.formScore=right;
+    $('sub').parentNode.innerHTML=`<span class="sans" style="margin-right:auto;font-size:15px">Правильно: <b>${right} з ${FIELDS.length}</b></span><button class="btn primary" id="nx">До запитів →</button>`;
+    $('nx').onclick=()=>{ S.i=0; kase(); window.scrollTo({top:0,behavior:'smooth'}); };
+  };
+}
+
+function kase(){
+  if (S.i>=CASES.length) return finish();
+  const c=CASES[S.i];
+  $('main').innerHTML=`<div class="doc-h"><small>Етап 2 з 2 · Вхідний запит № ${S.i+1} з ${CASES.length}</small><h1>Журнал запитів</h1></div>
+   <div class="memo"><b>Від: ${esc(c.from)}</b>${esc(c.text)}</div><div id="ch"></div><div id="fb"></div>`;
+  c.choices.map((x,k)=>k).sort(()=>Math.random()-.5).forEach(k=>{
+    const o=c.choices[k], b=document.createElement('button'); b.className='choice'; b.textContent=o.t;
+    b.onclick=()=>{ document.querySelectorAll('.choice').forEach(x=>x.disabled=true); b.classList.add('picked',o.kind); S.cases[S.i]=o.kind;
+      const head=o.kind==='best'?'✔ Правильно.':o.kind==='ok'?'≈ Прийнятно, але є краще.':'✘ Порушення.';
+      const best=c.choices.find(x=>x.kind==='best');
+      $('fb').innerHTML=`<div class="fb ${o.kind}"><b>${head}</b> ${esc(o.why)}${o.kind!=='best'?`<br><b>Правильно:</b> ${esc(best.t)}.`:''}</div>
+        <div class="row"><button class="btn primary" id="nx">${S.i+1<CASES.length?'Наступний запит →':'Підбити підсумки'}</button></div>`;
+      $('nx').onclick=()=>{ S.i++; kase(); window.scrollTo({top:0,behavior:'smooth'}); }; $('nx').focus(); };
+    $('ch').appendChild(b);
+  });
+}
+
+function finish(){
+  const best=S.cases.filter(k=>k==='best').length, ok=S.cases.filter(k=>k==='ok').length;
+  const score=S.formScore*10 + best*20 + ok*10, max=FIELDS.length*10+CASES.length*20, pct=Math.round(score/max*100);
+  const chk=(score*29+S.player.length*13+S.formScore)%97, code=makeCode('ОС',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const stamp=pct>=80?'ЗАТВЕРДЖЕНО':pct>=55?'НА ДООПРАЦЮВАННЯ':'ВІДХИЛЕНО';
+  const summary=`Особова справа — ${S.player}, ${date}\nАнкета: ${S.formScore}/${FIELDS.length}; запити: найкращих ${best}/${CASES.length}, прийнятних ${ok}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  $('main').innerHTML=`<div class="stamp">${stamp}</div><div class="doc-h"><small>Службова записка</small><h1>Підсумок роботи</h1></div>
+   <p class="sans" style="font-size:15px"><b>${esc(S.player)}</b> · ${date}</p>
+   <table class="res"><tr><td>Анкета: правильно визначених полів</td><td>${S.formScore} з ${FIELDS.length}</td></tr>
+    <tr><td>Запити: найкращих рішень</td><td>${best} з ${CASES.length}</td></tr><tr><td>Запити: прийнятних</td><td>${ok}</td></tr>
+    <tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td><b>Рахунок</b></td><td>${score} з ${max} (${pct}%)</td></tr></table>
+   <p class="sans">Код результату для вчителя: <span class="code">${code}</span></p>
+   <h3>Пам’ятка діловода</h3>
+   <p class="sans" style="font-size:14.5px;line-height:1.6">📋 Збирай лише потрібні для роботи дані (принцип мінімізації) · 🗄 Особові справи — у шафі, що замикається · 🤝 Чужі контакти — лише зі згоди людини · 🔁 Документи передаються робочими каналами з обмеженим доступом · 🎣 Запит на списки працівників перевіряй через офіційні контакти · 🗑 Знищення — тільки за актом, після строку зберігання.</p>
+   <div class="row"><button class="btn" id="copy">📋 Копіювати результат</button><button class="btn" id="prn">🖨 Друк / PDF</button><button class="btn primary" id="again">Ще раз</button></div>`;
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати');}catch(err){b.textContent='Не вдалося скопіювати';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=start;
+}
+
+start();
+</script>
+</body>
+</html>

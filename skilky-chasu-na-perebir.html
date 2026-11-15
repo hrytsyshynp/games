@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Скільки часу на перебір? — лабораторія паролів і циклів</title>
+<style>
+  :root{ --bg:#07100b; --pan:#0c1a12; --line:#1f4630; --g:#39ff88; --g2:#9dffc4; --dim:#5f9c7a; --y:#ffd166; --r:#ff5f6d; --c:#5ee1ff; }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--g2);font-family:Consolas,"Cascadia Mono","Courier New",monospace;
+       background-image:repeating-linear-gradient(0deg,rgba(57,255,136,.035) 0 1px,transparent 1px 3px)}
+  .wrap{max-width:900px;margin:0 auto;padding:14px}
+  .top{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:var(--pan);padding:8px 12px;border-radius:6px;margin-bottom:12px;flex-wrap:wrap;gap:6px}
+  .top b{color:var(--g)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tab{font:inherit;font-size:13px;background:transparent;border:1px solid var(--line);color:var(--dim);padding:5px 10px;border-radius:4px;cursor:pointer}
+  .tab.on{border-color:var(--g);color:var(--g);background:#0f2a1b}
+  .pan{border:1px solid var(--line);background:var(--pan);border-radius:6px;padding:14px 16px;margin-bottom:12px}
+  h1{color:var(--g);font-size:22px;margin:0 0 8px;text-shadow:0 0 10px rgba(57,255,136,.4)}
+  h2{color:var(--g);font-size:16px;margin:0 0 10px}
+  p{line-height:1.6;font-size:14.5px;margin:6px 0 10px}
+  .prompt:before{content:"> ";color:var(--g)}
+  label.ck{display:inline-flex;gap:6px;align-items:center;margin:4px 12px 4px 0;cursor:pointer;font-size:14px}
+  input[type=checkbox]{accent-color:var(--g);width:16px;height:16px}
+  input[type=range]{width:100%;accent-color:var(--g)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .big{font-size:24px;color:var(--g);word-break:break-all}
+  .big.y{color:var(--y)}.big.r{color:var(--r)}
+  .k{color:var(--dim);font-size:12.5px;text-transform:uppercase;letter-spacing:.8px}
+  pre{background:#04090600;border:1px dashed var(--line);border-radius:4px;padding:10px;margin:8px 0;font-size:13.5px;line-height:1.5;color:var(--c);white-space:pre-wrap}
+  pre .cm{color:var(--dim)}
+  .btn{font:inherit;font-size:14px;background:transparent;border:1px solid var(--g);color:var(--g);padding:8px 14px;border-radius:4px;cursor:pointer}
+  .btn:hover:not(:disabled){background:#123422}
+  .btn.primary:hover:not(:disabled){background:#7dffb3}
+  .btn.primary{background:var(--g);color:#05200f;font-weight:700}
+  .btn:disabled{opacity:.4;cursor:default}
+  .row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:12px}
+  input[type=text],input[type=number]{font:inherit;font-size:15px;background:#03080500;border:1px solid var(--line);color:var(--g);padding:8px 10px;border-radius:4px;width:220px}
+  .choice{display:block;width:100%;text-align:left;font:inherit;font-size:14px;background:transparent;border:1px solid var(--line);color:var(--g2);padding:10px 12px;border-radius:4px;margin:7px 0;cursor:pointer;white-space:pre-wrap}
+  .choice:hover:not(:disabled){border-color:var(--g)}
+  .choice:disabled{opacity:.5;cursor:default}
+  .choice.picked{opacity:1}
+  .choice.right{border-color:var(--g);background:#0f2a1b}.choice.wrong{border-color:var(--r);background:#2a0f13}
+  .fb{border-left:3px solid;padding:8px 12px;margin-top:10px;font-size:14px;line-height:1.55}
+  .fb.right{border-color:var(--g);background:#0f2a1b}.fb.wrong{border-color:var(--r);background:#2a0f13}
+  .digits{font-size:44px;letter-spacing:10px;color:var(--y);text-align:center;margin:8px 0}
+  .score{color:var(--y)}
+  table.res{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px dashed var(--line)}
+  table.res td:last-child{text-align:right;color:var(--g)}
+  .code{font-size:20px;border:1px dashed var(--y);color:var(--y);padding:6px 12px;display:inline-block}
+  .muted{color:var(--dim)}
+  @media (max-width:640px){.grid{grid-template-columns:1fr}}
+  @media print{body{background:#fff;color:#000}.tabs,.row{display:none}.pan{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><b>root@lab:~$ ./brute_force_lab</b><span class="tabs" id="tabs"></span><span class="score" id="score"></span></div>
+  <div id="main"></div>
+</div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати швидкість перебору, алфавіти й завдання.
+   Тема: «Алгоритми з повтореннями» (Тема 4.7) на прикладі перебору паролів.
+   SPEED — умовна кількість спроб за секунду під час офлайн-перебору.
+   TASKS: type 'num' — відповідь числом; type 'choice' — вибір варіанта.
+   ===================================================================== */
+const SPEED = 1e10; // 10 мільярдів спроб за секунду (умовно, для порівняння)
+const SETS = [
+  {id:'d', name:'цифри 0–9', n:10},
+  {id:'l', name:'малі латинські a–z', n:26},
+  {id:'u', name:'великі латинські A–Z', n:26},
+  {id:'s', name:'спецсимволи !@#…', n:32}
+];
+const TASKS = [
+ {type:'num', q:'Цикл перебирає всі 4-значні PIN-коди від 0000 до 9999. Скільки разів у найгіршому випадку виконається тіло циклу?', a:10000,
+  why:'Від 0000 до 9999 — 10 варіантів на кожну з 4 позицій: 10⁴ = 10 000 ітерацій.'},
+ {type:'num', q:'А скільки ітерацій потрібно для пароля з 3 малих латинських літер (aaa … zzz)?', a:17576,
+  why:'26 варіантів на кожну з 3 позицій: 26³ = 17 576. Загальна формула: N = A^L, де A — розмір алфавіту, L — довжина.'},
+ {type:'choice', q:'Є пароль із 8 малих латинських літер. Що дасть БІЛЬШЕ варіантів для перебору?',
+  opts:['Подовжити його до 12 малих літер','Залишити 8 символів, але додати великі літери й цифри (62 символи)'], a:0,
+  why:'26¹² ≈ 9,5·10¹⁶, а 62⁸ ≈ 2,2·10¹⁴ — у 400+ разів менше. Довжина стоїть у показнику степеня, тому вона важить найбільше.'},
+ {type:'num', q:'Скористайся лабораторією (вкладка «Лабораторія»). Яка мінімальна довжина пароля ЛИШЕ з малих латинських літер, щоб перебір тривав понад 1000 років?', a:15,
+  why:'26¹⁴ ≈ 6,5·10¹⁹ варіантів — приблизно 200 років, а 26¹⁵ ≈ 1,7·10²¹ — понад 5000 років. Отже, мінімум 15 символів.'},
+ {type:'choice', q:'Пароль «Sonechko2009» має 12 символів, але його знаходять за секунди. Чому?',
+  opts:['Зловмисник перебирає не всі комбінації, а словник популярних слів, імен і років','Пароль занадто довгий, тому програма плутається','Великі літери легше вгадати'], a:0,
+  why:'Словникова атака — це цикл не по всіх A^L варіантах, а по списку з мільйонів поширених слів і їх змін. Ім’я + рік народження є в будь-якому такому словнику.'},
+ {type:'choice', q:'Чому 4-значний PIN на телефоні все ж захищає досить добре, хоча варіантів лише 10 000?',
+  opts:['Після кількох невдалих спроб телефон блокує введення або додає затримку','Телефон не дозволяє вводити цифри підряд','10 000 — це дуже багато для будь-якого комп’ютера'], a:0,
+  why:'Обмеження кількості спроб «ламає» цикл перебору: замість мільярдів спроб за секунду — кілька спроб, а потім очікування. Тому для акаунтів так важливі блокування та 2FA.'}
+];
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+function fresh(){ return {player:'',view:'intro',L:8,sets:{l:true},ans:{},t0:Date.now(),demo:false}; }
+const right = () => Object.values(S.ans).filter(Boolean).length;
+
+function tabs(){
+  const t=[['lab','🧪 Лабораторія'],['demo','⚡ Злам PIN'],['tasks','📝 Завдання']];
+  $('tabs').innerHTML = S.view==='intro'||S.view==='end' ? '' : t.map(([k,n])=>`<button class="tab ${S.view===k?'on':''}" data-v="${k}">${n}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; draw(); });
+  $('score').textContent = S.view==='intro' ? '' : `[${Object.keys(S.ans).length}/${TASKS.length} завдань · ✔ ${right()}]`;
+}
+function draw(){ tabs(); ({intro,lab,demo,tasks,end})[S.view](); }
+
+function human(sec){
+  if (sec < 1) return 'менше секунди';
+  const y = 365.25*24*3600;
+  const units=[[1e9*y,'млрд років'],[1e6*y,'млн років'],[y,'років'],[86400,'днів'],[3600,'годин'],[60,'хвилин'],[1,'секунд']];
+  for (const [v,n] of units) if (sec>=v){ const x=sec/v; return (x>=1000? x.toExponential(1).replace('e+',' · 10^') : x.toFixed(x<10?1:0)) + ' ' + n; }
+}
+function fmtN(A,L){
+  const big = BigInt(A)**BigInt(L), s=big.toString();
+  return s.length<=16 ? s.replace(/\B(?=(\d{3})+(?!\d))/g,' ') : `${s[0]},${s.slice(1,3)} · 10^${s.length-1}`;
+}
+
+function intro(){
+  $('main').innerHTML=`<div class="pan"><h1>Скільки часу на перебір?</h1>
+   <p>Перебір паролів (brute force) — це звичайний <b>цикл</b>: програма по черзі пробує всі можливі комбінації, доки не знайде правильну. Скільки разів виконається цей цикл, залежить від двох чисел: <b>розміру алфавіту A</b> і <b>довжини пароля L</b>.</p>
+   <pre><span class="cm"># перебір усіх паролів довжини L з алфавіту alphabet</span>
+from itertools import product
+for guess in product(alphabet, repeat=L):   <span class="cm"># A^L ітерацій</span>
+    if ''.join(guess) == password:
+        print('Знайдено!'); break</pre>
+   <p>У лабораторії ти дослідиш, як A і L впливають на кількість ітерацій, побачиш справжній перебір PIN-коду, а потім виконаєш ${TASKS.length} завдань.</p>
+   <p class="muted">Усі паролі в грі навчальні. Швидкість ${SPEED.toExponential(0).replace('e+',' · 10^')} спроб/с — умовна, для порівняння.</p>
+   <label class="prompt">ім’я та клас: <input type="text" id="pname" maxlength="40" placeholder="Олег Д., 10-А"></label>
+   <div class="row"><button class="btn primary" id="go">./start</button></div></div>`;
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; S.t0=Date.now(); S.view='lab'; draw(); };
+}
+
+function lab(){
+  $('main').innerHTML=`<div class="pan"><h2>🧪 Лабораторія: N = A<sup>L</sup></h2>
+   <div class="k">алфавіт</div>${SETS.map(s=>`<label class="ck"><input type="checkbox" data-id="${s.id}" ${S.sets[s.id]?'checked':''}> ${s.name} <span class="muted">(${s.n})</span></label>`).join('')}
+   <div class="k" style="margin-top:10px">довжина L = <span id="lv">${S.L}</span></div>
+   <input type="range" id="len" min="1" max="24" value="${S.L}">
+   <div class="grid" style="margin-top:12px">
+     <div><div class="k">розмір алфавіту A</div><div class="big" id="A"></div></div>
+     <div><div class="k">кількість варіантів N = A^L</div><div class="big" id="N"></div></div>
+     <div><div class="k">ітерацій циклу (найгірший випадок)</div><div class="big" id="I"></div></div>
+     <div><div class="k">час перебору</div><div class="big" id="T"></div></div>
+   </div>
+   <pre id="code"></pre>
+   <div class="row"><button class="btn primary" id="toTasks">До завдань →</button></div></div>`;
+  const upd=()=>{
+    const A = SETS.filter(s=>S.sets[s.id]).reduce((s,x)=>s+x.n,0), L=S.L;
+    $('lv').textContent=L; $('A').textContent=A||'—';
+    if(!A){ ['N','I','T'].forEach(id=>$(id).textContent='—'); $('code').textContent='# обери хоча б один набір символів'; return; }
+    const n=fmtN(A,L); $('N').textContent=n; $('I').textContent=n;
+    const sec = Math.pow(A,L)/SPEED, y=sec/(365.25*24*3600);
+    $('T').textContent=human(sec); $('T').className='big '+(y>=1000?'':y>=1?'y':'r');
+    $('code').innerHTML=`<span class="cm"># A = ${A}, L = ${L}</span>\nfor guess in product(alphabet, repeat=${L}):   <span class="cm"># ${esc(n)} ітерацій</span>\n    ...`;
+  };
+  document.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>{ S.sets[c.dataset.id]=c.checked; upd(); });
+  $('len').oninput=e=>{ S.L=+e.target.value; upd(); };
+  $('toTasks').onclick=()=>{ S.view='tasks'; draw(); };
+  upd();
+}
+
+function demo(){
+  $('main').innerHTML=`<div class="pan"><h2>⚡ Злам PIN-коду в реальному часі</h2>
+   <p>Браузер справді перебере всі коди по черзі — подивись, скільки ітерацій циклу знадобиться, щоб знайти випадковий PIN.</p>
+   <div class="k">довжина PIN</div><label class="ck"><input type="radio" name="d" value="4" checked> 4 цифри</label><label class="ck"><input type="radio" name="d" value="6"> 6 цифр</label>
+   <div class="digits" id="dg">····</div>
+   <div class="grid"><div><div class="k">ітерацій виконано</div><div class="big" id="it">0</div></div><div><div class="k">час</div><div class="big" id="tm">0 мс</div></div></div>
+   <pre>for pin in range(10**L):            <span class="cm"># L = 4 або 6</span>
+    if str(pin).zfill(L) == secret:
+        break</pre>
+   <div class="row"><button class="btn primary" id="run">▶ Запустити перебір</button><button class="btn" id="toTasks">До завдань →</button></div>
+   <div id="out"></div></div>`;
+  $('toTasks').onclick=()=>{ S.view='tasks'; draw(); };
+  $('run').onclick=()=>{
+    const L=+document.querySelector('input[name=d]:checked').value, max=10**L;
+    const secret=String(Math.floor(Math.random()*max)).padStart(L,'0');
+    $('run').disabled=true; $('out').innerHTML='';
+    let pin=0; const t0=performance.now(); const step=Math.ceil(max/120);
+    const tick=()=>{
+      if(!$('dg')) return;
+      const end=Math.min(max,pin+step); let found=false;
+      for(;pin<end;pin++){ if(String(pin).padStart(L,'0')===secret){ found=true; break; } }
+      $('dg').textContent=String(Math.min(pin,max-1)).padStart(L,'0'); $('it').textContent=(pin+1).toLocaleString('uk-UA'); $('tm').textContent=Math.round(performance.now()-t0)+' мс';
+      if(found){ S.demo=true; $('run').disabled=false;
+        $('out').innerHTML=`<div class="fb right">Знайдено PIN <b>${secret}</b> за ${(pin+1).toLocaleString('uk-UA')} ітерацій із ${max.toLocaleString('uk-UA')} можливих. Анімацію навмисно сповільнено — без неї браузер перебрав би всі коди за частку секунди. Порятунок — обмеження кількості спроб.</div>`;
+        return; }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  };
+}
+
+function tasks(){
+  const i = TASKS.findIndex((t,k)=>S.ans[k]===undefined);
+  if (i<0){ S.view='end'; return draw(); }
+  const t=TASKS[i];
+  $('main').innerHTML=`<div class="pan"><h2>📝 Завдання ${i+1} з ${TASKS.length}</h2><p>${esc(t.q)}</p>
+   ${t.type==='num'?`<label class="prompt">відповідь: <input type="number" id="inp" min="0"></label><div class="row"><button class="btn primary" id="ok">Enter</button></div>`
+                   :`<div id="ch">${t.opts.map((o,k)=>`<button class="choice" data-k="${k}">${String.fromCharCode(65+k)}) ${esc(o)}</button>`).join('')}</div>`}
+   <div id="fb"></div></div>`;
+  const done=(good, shown)=>{
+    S.ans[i]=good; tabs();
+    $('fb').innerHTML=`<div class="fb ${good?'right':'wrong'}"><b>${good?'✔ ACCESS GRANTED.':'✘ ACCESS DENIED.'}</b> ${!good&&shown!=null?'Правильна відповідь: '+esc(shown)+'. ':''}${esc(t.why)}</div>
+      <div class="row"><button class="btn primary" id="nx">${Object.keys(S.ans).length<TASKS.length?'Наступне →':'Підсумок →'}</button></div>`;
+    $('nx').onclick=()=>draw(); $('nx').focus();
+  };
+  if (t.type==='num'){
+    const go=()=>{ const v=$('inp').value.trim().replace(/\s/g,''); if(v==='') return; $('inp').disabled=true; $('ok').disabled=true; done(+v===t.a, t.a.toLocaleString('uk-UA')); };
+    $('ok').onclick=go; $('inp').onkeydown=e=>{ if(e.key==='Enter') go(); }; $('inp').focus();
+  } else {
+    document.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.choice').forEach(x=>x.disabled=true);
+      const k=+b.dataset.k, good=k===t.a; b.classList.add('picked',good?'right':'wrong');
+      if(!good) document.querySelector(`.choice[data-k="${t.a}"]`).classList.add('right');
+      done(good, good?null:String.fromCharCode(65+t.a)); });
+  }
+}
+
+function end(){
+  const r=right(), score=r*100+(S.demo?50:0), max=TASKS.length*100+50, pct=Math.round(score/max*100);
+  const chk=(score*31+S.player.length*17+r)%97, code=makeCode('ПП',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const summary=`Скільки часу на перебір? — ${S.player}, ${date}\nЗавдань виконано правильно: ${r}/${TASKS.length}; демонстрацію перебору ${S.demo?'запущено':'не запущено'}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  $('main').innerHTML=`<div class="pan"><h1>${pct>=80?'ROOT ACCESS: ти розумієш перебір 🏆':pct>=50?'USER ACCESS: непогано 👍':'GUEST ACCESS: спробуй ще 🔁'}</h1>
+   <p>${esc(S.player)} · ${date}</p>
+   <table class="res"><tr><td>Правильних відповідей</td><td>${r} з ${TASKS.length}</td></tr><tr><td>Демонстрація перебору PIN</td><td>${S.demo?'+50':'—'}</td></tr>
+   <tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td>Рахунок</td><td>${score} з ${max} (${pct}%)</td></tr></table>
+   <p>Код результату для вчителя: <span class="code">${code}</span></p>
+   <pre><span class="cm"># висновки</span>
+N = A ** L              <span class="cm"># кількість ітерацій перебору</span>
+довжина L > алфавіт A   <span class="cm"># L стоїть у показнику степеня</span>
+словник ≠ всі варіанти  <span class="cm"># ім'я + рік ламають за секунди</span>
+обмеження спроб + 2FA   <span class="cm"># «ламають» сам цикл перебору</span></pre>
+   <div class="row"><button class="btn" id="copy">copy result</button><button class="btn" id="prn">print</button><button class="btn primary" id="again">./restart</button></div></div>`;
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✔ copied',()=>b.textContent='помилка копіювання');}catch(err){b.textContent='помилка копіювання';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=()=>{ S=fresh(); draw(); };
+}
+
+S=fresh(); draw();
+</script>
+</body>
+</html>

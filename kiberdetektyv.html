@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кібердетектив — міні-CTF з рядками й масивами</title>
+<style>
+  :root{ --bg:#15120e; --paper:#efe4cc; --paper2:#e2d3b1; --ink:#2a2118; --muted:#7b6a50; --red:#a8251b; --gold:#e8b44a; --line:#c9b48a; --ok:#2f7d32; }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;color:var(--paper);font-family:"Segoe UI",system-ui,sans-serif;
+       background:radial-gradient(700px 500px at 50% 20%,#3a2f22,var(--bg))}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  header h1{margin:0;font-family:Georgia,serif;font-size:26px;letter-spacing:1px;color:var(--gold)}
+  header .sub{font-size:13px;color:#b8a888}
+  .flags{margin-left:auto;display:flex;gap:6px}
+  .flags i{font-style:normal;font-size:20px;filter:grayscale(1) opacity(.35)}
+  .flags i.on{filter:none}
+  .board{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
+  .file{background:var(--paper);color:var(--ink);border-radius:2px 14px 2px 2px;padding:18px 20px;box-shadow:0 14px 30px rgba(0,0,0,.5);position:relative;font-family:Georgia,serif}
+  .file:before{content:"";position:absolute;top:-12px;left:18px;width:120px;height:16px;background:var(--paper2);border-radius:6px 6px 0 0}
+  .file .no{font-family:"Courier New",monospace;font-size:13px;color:var(--muted)}
+  .file h2{margin:4px 0 8px;font-size:21px}
+  .file p{line-height:1.6;font-size:15.5px;margin:6px 0 10px}
+  .evidence{font-family:"Courier New",monospace;font-size:15px;background:#fff8e6;border:1px dashed var(--line);padding:10px 12px;word-break:break-all;margin:8px 0;user-select:all}
+  .stamp{position:absolute;top:16px;right:18px;transform:rotate(12deg);border:3px solid var(--red);color:var(--red);font-family:"Segoe UI",sans-serif;font-weight:800;padding:3px 10px;letter-spacing:2px;opacity:.85}
+  .stamp.ok{border-color:var(--ok);color:var(--ok)}
+  .ans{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  input[type=text],textarea{font-family:"Courier New",monospace;font-size:15px;padding:9px 10px;border:1px solid var(--line);background:#fffdf6;color:var(--ink);border-radius:4px}
+  .ans input{flex:1;min-width:200px}
+  .btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:4px;border:1px solid var(--muted);background:#fffdf6;color:var(--ink);cursor:pointer}
+  .btn.red{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#2a1d05;font-weight:700}
+  .btn:disabled{opacity:.5;cursor:default}
+  .msg{font-family:"Segoe UI",sans-serif;font-size:14.5px;line-height:1.5;padding:9px 12px;border-left:4px solid;margin-top:10px;background:#fff8e6}
+  .msg.ok{border-color:var(--ok)}.msg.no{border-color:var(--red)}.msg.hint{border-color:var(--gold)}
+  .tools{background:#231d16;border:1px solid #4a3d2c;border-radius:10px;padding:14px}
+  .tools h3{margin:0 0 8px;color:var(--gold);font-family:Georgia,serif}
+  .tools textarea{width:100%;height:70px;resize:vertical}
+  .tl{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .tl .btn{background:#33291e;color:var(--paper);border-color:#5a4a35;font-size:13px}
+  .tl .btn:hover{border-color:var(--gold)}
+  .tl label{font-size:13px;color:#cdbb98;display:flex;align-items:center;gap:6px}
+  .tl input[type=number]{width:62px;font:inherit;font-size:13px;padding:5px;border-radius:4px;border:1px solid #5a4a35;background:#1b1611;color:var(--paper)}
+  .out{font-family:"Courier New",monospace;font-size:15px;background:#0f0c09;color:#f3d38b;border-radius:6px;padding:10px;min-height:44px;word-break:break-all;white-space:pre-wrap}
+  .py{font-family:"Courier New",monospace;font-size:12.5px;color:#9fd38b;margin-top:6px}
+  .row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:12px}
+  table.res{width:100%;border-collapse:collapse;font-family:"Segoe UI",sans-serif;font-size:14.5px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px dotted var(--line)}
+  table.res td:last-child{text-align:right;font-weight:700}
+  .code{font-family:"Courier New",monospace;font-size:20px;border:2px dashed var(--red);padding:6px 12px;display:inline-block;color:var(--red)}
+  .muted{color:var(--muted)}
+  @media (max-width:820px){.board{grid-template-columns:1fr}}
+  @media print{body{background:#fff}.tools,.row{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div style="font-size:34px">🕵️</div><div><h1>КІБЕРДЕТЕКТИВ</h1><div class="sub">Міні-CTF: знайди прапорці FLAG{…}, працюючи з рядками й масивами</div></div><div class="flags" id="flags"></div></header>
+  <div class="board"><div class="file" id="case"></div><div class="tools" id="tools"></div></div>
+</div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати справи, докази й прапорці.
+   Тема: «Масиви. Рядкові величини» (Тема 4.8), зв’язок із темами 4.7 і 1.2.
+   Прапорці мають формат FLAG{...}; регістр важливий.
+   Усі «докази» — навчальні рядки, які можна перевірити й мовою Python.
+   ===================================================================== */
+const CASES = [
+ {title:'Справа №1. Дзеркальний запис', evidence:'}sdrawkcab_og_sgnirts{GALF', flag:'FLAG{strings_go_backwards}',
+  text:'На столі підозрюваного знайшли записку. Схоже, її написали задом наперед.',
+  hint:'Розверни рядок. У Python це зріз s[::-1].'},
+ {title:'Справа №2. Імператорський шифр', evidence:'IODJ{fdhvdu_zdv_khuh}', flag:'FLAG{caesar_was_here}',
+  text:'Повідомлення зашифровано найстарішим шифром: кожна літера зсунута на кілька позицій алфавіту. Відомо, що «F» стала «I».',
+  hint:'F → I — це зсув на 3. Щоб розшифрувати, зсунь літери на −3 (інструмент «Цезар»).'},
+ {title:'Справа №3. Не шифр, а маскування', evidence:'RkxBR3tiYXNlNjRfaXNfbm90X2VuY3J5cHRpb259', flag:'FLAG{base64_is_not_encryption}',
+  text:'У листі зловмисника — дивний рядок з латинських літер і цифр. Детектив каже: «Це не шифрування, а лише кодування — його декодує будь-хто».',
+  hint:'Рядок у кодуванні Base64 (часто закінчується на «=»). Python: base64.b64decode(s).'},
+ {title:'Справа №4. Масив чисел', evidence:'[70, 76, 65, 71, 123, 99, 104, 114, 95, 97, 110, 100, 95, 111, 114, 100, 125]', flag:'FLAG{chr_and_ord}',
+  text:'У журналі сервера знайшли масив чисел. Можливо, це коди символів?',
+  hint:'Кожне число — код символу. Python: \'\'.join(chr(x) for x in arr). Наприклад, chr(70) = \'F\'.'},
+ {title:'Справа №5. Сміття в рядку', evidence:'FkxLjhAqzGpz{kyeqpvwqezjrjzywz_pjtqyhzwihhryqdyy}jq', flag:'FLAG{every_third}',
+  text:'Довгий рядок здається безглуздим. Але інформатор шепоче: «Читай не все підряд».',
+  hint:'Візьми кожен 3-й символ, починаючи з першого: зріз s[::3].'},
+ {title:'Справа №6. Невідомий зсув', evidence:'QWLR{wzzad_mcplv_ntaspcd}', flag:'FLAG{loops_break_ciphers}',
+  text:'Знову шифр Цезаря, але зсув невідомий. Добре, що варіантів лише 26 — їх можна перебрати циклом.',
+  hint:'Скористайся інструментом «Перебрати всі зсуви» і знайди рядок, що починається з FLAG.'}
+];
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+function fresh(){ return {player:'',i:-1,solved:{},hints:{},tries:{},t0:Date.now()}; }
+const caesar=(s,k)=>s.replace(/[a-z]/gi,c=>{const b=c<='Z'?65:97;return String.fromCharCode(((c.charCodeAt(0)-b+k)%26+26)%26+b);});
+const b64=s=>{ try{ return decodeURIComponent(escape(atob(s.trim()))); }catch(e){ return '⚠ Це не коректний Base64'; } };
+
+function flags(){ $('flags').innerHTML=CASES.map((c,k)=>`<i class="${S.solved[k]?'on':''}" title="${esc(c.title)}">🚩</i>`).join(''); }
+
+function tools(){
+  $('tools').innerHTML=`<h3>🧰 Інструменти детектива</h3>
+   <textarea id="tin" placeholder="Встав сюди доказ…"></textarea>
+   <div class="tl"><button class="btn" data-t="rev">↔ Розвернути</button><button class="btn" data-t="b64">Base64 → текст</button><button class="btn" data-t="chr">Числа → символи</button></div>
+   <div class="tl"><label>Зсув <input type="number" id="shift" value="-3"></label><button class="btn" data-t="cae">🏛 Цезар</button><button class="btn" data-t="all">🔁 Перебрати всі зсуви</button></div>
+   <div class="tl"><label>Кожен n-й, n = <input type="number" id="nth" value="2" min="1"></label><button class="btn" data-t="nth">✂ Вибрати символи</button></div>
+   <div class="out" id="tout">Результат з’явиться тут.</div><div class="py" id="tpy"></div>`;
+  document.querySelectorAll('.tl .btn').forEach(b=>b.onclick=()=>{
+    const s=$('tin').value, t=b.dataset.t; let out='', py='';
+    if(t==='rev'){ out=[...s].reverse().join(''); py='s[::-1]'; }
+    if(t==='b64'){ out=b64(s); py='base64.b64decode(s).decode()'; }
+    if(t==='chr'){ const nums=(s.match(/-?\d+/g)||[]).map(Number); out=nums.map(n=>n>=32&&n<1114112?String.fromCharCode(n):'?').join(''); py="''.join(chr(x) for x in arr)"; }
+    if(t==='cae'){ const k=+$('shift').value||0; out=caesar(s,k); py=`зсув кожної літери на ${k}`; }
+    if(t==='all'){ out=Array.from({length:26},(_,k)=>`${String(k).padStart(2,' ')}: ${caesar(s,-k)}`).join('\n'); py='for k in range(26):  # 26 ітерацій циклу\n    print(k, decrypt(s, k))'; }
+    if(t==='nth'){ const n=Math.max(1,+$('nth').value||1); out=[...s].filter((c,k)=>k%n===0).join(''); py=`s[::${n}]`; }
+    $('tout').textContent=out||'(порожньо)'; $('tpy').textContent='Python: '+py;
+  });
+}
+
+function start(){
+  S=fresh(); flags();
+  $('case').innerHTML=`<div class="no">ВІДДІЛ КІБЕРПОЛІЦІЇ · НАВЧАЛЬНИЙ ПОЛІГОН</div><h2>Вітаємо в загоні, детективе</h2>
+   <p>Зловмисник залишив по собі шість зашифрованих або закодованих повідомлень. У кожному захований <b>прапорець</b> у форматі <code>FLAG{…}</code>. Знайди всі шість.</p>
+   <p>Праворуч — інструменти. Кожен з них виконує звичайну операцію з рядками або масивами, а під результатом видно, як те саме записати мовою Python.</p>
+   <p class="muted">Підказка відкривається за кнопкою, але коштує частини балів. Справи можна розв’язувати в будь-якому порядку.</p>
+   <label>Твоє ім’я та клас:<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Назар П., 10-А" style="width:100%"></label>
+   <div class="row"><button class="btn red" id="go">Відкрити першу справу</button></div>`;
+  $('tools').innerHTML='<h3>🧰 Інструменти детектива</h3><p style="color:#cdbb98">Стануть доступні, щойно відкриєш справу.</p>';
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; S.t0=Date.now(); S.i=0; tools(); show(); };
+}
+
+function show(){
+  flags();
+  const c=CASES[S.i], k=S.i, done=S.solved[k];
+  $('case').innerHTML=`${done?'<div class="stamp ok">РОЗКРИТО</div>':'<div class="stamp">ВІДКРИТО</div>'}
+   <div class="no">СПРАВА ${k+1} / ${CASES.length}</div><h2>${esc(c.title)}</h2><p>${esc(c.text)}</p>
+   <div class="muted" style="font-family:Segoe UI;font-size:13px">Доказ (клацни, щоб виділити):</div><div class="evidence">${esc(c.evidence)}</div>
+   <div class="ans"><input type="text" id="flag" placeholder="FLAG{...}" ${done?'disabled value="'+esc(c.flag)+'"':''}><button class="btn red" id="chk" ${done?'disabled':''}>Перевірити</button><button class="btn" id="hint" ${done||S.hints[k]?'disabled':''}>💡 Підказка</button></div>
+   <div id="m">${S.hints[k]?`<div class="msg hint">💡 ${esc(c.hint)}</div>`:''}${done?'<div class="msg ok">🚩 Прапорець знайдено!</div>':''}</div>
+   <div class="row"><button class="btn" id="prev" ${k===0?'disabled':''}>← Попередня</button>${k<CASES.length-1?'<button class="btn" id="next">Наступна справа →</button>':''}<button class="btn gold" id="close">Закрити розслідування</button></div>`;
+  $('tin') && ($('tin').value=c.evidence);
+  if($('prev')) $('prev').onclick=()=>{ S.i--; show(); };
+  if($('next')) $('next').onclick=()=>{ S.i++; show(); };
+  $('close').onclick=()=>{ const n=Object.keys(S.solved).length; if(n<CASES.length && !confirm(`Розкрито ${n} з ${CASES.length} справ. Завершити розслідування?`)) return; finish(); };
+  $('hint').onclick=()=>{ S.hints[k]=true; show(); };
+  const check=()=>{
+    const v=$('flag').value.trim(); if(!v) return;
+    S.tries[k]=(S.tries[k]||0)+1;
+    if(v===c.flag){ S.solved[k]=true; show(); }
+    else $('m').insertAdjacentHTML('beforeend',`<div class="msg no">✘ «${esc(v)}» — не той прапорець.${v.toLowerCase()===c.flag.toLowerCase()?' Майже! Зверни увагу на великі й малі літери.':''}</div>`);
+  };
+  $('chk').onclick=check; $('flag').onkeydown=e=>{ if(e.key==='Enter') check(); };
+}
+
+function finish(){
+  const n=Object.keys(S.solved).length, h=Object.keys(S.hints).filter(k=>S.solved[k]).length;
+  const score=n*100-h*40, max=CASES.length*100, pct=Math.round(score/max*100);
+  const chk=(score*37+S.player.length*19+n)%97, code=makeCode('КД',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const summary=`Кібердетектив — ${S.player}, ${date}\nПрапорців: ${n}/${CASES.length}; підказок використано: ${h}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  flags();
+  $('case').innerHTML=`<div class="stamp ${pct>=70?'ok':''}">${pct>=70?'ЗАКРИТО':'АРХІВ'}</div><div class="no">ПІДСУМКОВИЙ РАПОРТ</div><h2>${n===CASES.length?'Усі справи розкрито!':'Розслідування завершено'}</h2>
+   <p style="font-family:Segoe UI"><b>${esc(S.player)}</b> · ${date}</p>
+   <table class="res">${CASES.map((c,k)=>`<tr><td>${esc(c.title)}</td><td>${S.solved[k]?'🚩'+(S.hints[k]?' (з підказкою)':''):'—'}</td></tr>`).join('')}
+    <tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td><b>Рахунок</b></td><td>${score} з ${max} (${pct}%)</td></tr></table>
+   <p style="font-family:Segoe UI">Код результату для вчителя: <span class="code">${code}</span></p>
+   <p style="font-family:Segoe UI;font-size:14px;line-height:1.6">🔁 Розворот, зрізи, коди символів — звичайні операції з рядками й масивами · 🏛 Шифр Цезаря ламається перебором 26 варіантів · 🎭 Base64 — кодування, а не шифрування: справжнім даним потрібне справжнє шифрування з ключем · ⚖️ Такі вміння застосовують лише на навчальних полігонах і з дозволу власника системи.</p>
+   <div class="row"><button class="btn" id="copy">📋 Копіювати результат</button><button class="btn" id="prn">🖨 Друк / PDF</button><button class="btn red" id="again">Нове розслідування</button></div>`;
+  $('tools').innerHTML='<h3>🧰 Інструменти детектива</h3><p style="color:#cdbb98">Розслідування завершено.</p>';
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати');}catch(err){b.textContent='Не вдалося скопіювати';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=start;
+}
+
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Перевірка результатів — Кіберігри</title>
+<style>
+  :root{ --bg:#f4f6fb; --card:#fff; --line:#dfe4ee; --text:#1a2233; --muted:#667085; --acc:#3559e0; --ok:#1a9d5c; --bad:#d83a3a; --mid:#c98a00; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:18px}
+  a{color:var(--acc)}
+  h1{margin:4px 0 4px;font-size:24px}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+  textarea{width:100%;min-height:170px;font:14px/1.5 Consolas,monospace;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  input[type=text]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:13px}
+  td.code{font-family:Consolas,monospace;font-size:13px;white-space:nowrap}
+  .st{font-weight:700;white-space:nowrap}
+  .st.ok{color:var(--ok)}.st.bad{color:var(--bad)}.st.mid{color:var(--mid)}
+  .sum{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px}
+  .sum span{background:#eef1f8;border-radius:16px;padding:4px 10px;font-size:13px}
+  details summary{cursor:pointer;color:var(--acc)}
+  code{background:#eef1f8;padding:1px 5px;border-radius:4px}
+  @media print{.no-print{display:none}body{background:#fff}.card{border:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" class="no-print">← До каталогу ігор</a>
+  <h1>🔎 Перевірка результатів</h1>
+  <p class="muted">Сторінка для вчителя. Наприкінці кожної гри учень отримує код на зразок <code>ПС-93-1511-K7QF</code>: гра, бали, дата (день і місяць), контрольна частина. Контрольна частина обчислюється з урахуванням повного імені, яке учень увів на початку гри, тому чужий код з іншим ім’ям не пройде перевірку.</p>
+
+  <div class="card no-print">
+    <b>Вставте результати учнів</b>
+    <p class="muted" style="margin:6px 0">Можна вставляти: тексти, скопійовані кнопкою «Копіювати результат» (рядки «Учень: …» і «Код: …»); рядки у форматі <code>Ім’я ; код</code>; таблицю з Google Форми чи Excel (ім’я і код у сусідніх стовпцях).</p>
+    <textarea id="inp" placeholder="Іванна К., 10-А ; ПС-93-1511-K7QF&#10;Максим Л., 10-А ; КД-560-1511-3WQM"></textarea>
+    <div class="row"><button class="btn primary" id="go">Перевірити</button><button class="btn" id="clr">Очистити</button>
+      <span class="muted" style="font-size:13px">Дані нікуди не надсилаються — перевірка відбувається у вашому браузері.</span></div>
+  </div>
+
+  <div class="card" id="res" style="display:none">
+    <div class="sum" id="sum"></div>
+    <div style="overflow:auto"><table><thead><tr><th>№</th><th>Учень</th><th>Гра</th><th>Бали</th><th>Дата</th><th>Код</th><th>Результат</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="row no-print"><button class="btn" id="csv">⬇ Завантажити CSV (Excel)</button><button class="btn" id="prn">🖨 Друк</button></div>
+  </div>
+
+  <details class="card no-print"><summary>Як це працює</summary>
+    <p>Код складається з чотирьох частин: <b>гра</b> (дві літери), <b>бали</b>, <b>дата</b> проходження (ДДММ) і <b>контрольна частина</b> з 4 символів. Сторінка заново обчислює контрольну частину за грою, балами, датою та іменем і порівнює з кодом учня.</p>
+    <p>❌ означає, що код не відповідає імені (учень переписав чужий код, змінив бали або ввів у грі інше ім’я). ⚠️ означає старий формат коду або невідому гру. Ім’я порівнюється без урахування великих/малих літер і зайвих пробілів, але «Іра» і «Ірина» — різні імена, тому попросіть учнів вводити ім’я однаково.</p>
+    <p>Це засіб контролю, а не криптографічний захист: код ігор відкритий, тож технічно підготовлений учень теоретично може розібратися в алгоритмі.</p>
+  </details>
+</div>
+
+<script>
+const GAMES = { 'ЦФ':'Цифрова фортеця','ОД':'Один день онлайн','ЦС':'Цифровий слід','КЗ':'Курсова зникла','НС':'Налаштуй систему','ОС':'Особова справа',
+  'ПП':'Скільки часу на перебір?','КД':'Кібердетектив','СП':'Спільна папка класу','ПС':'Поштова скринька','АБ':'Адміністратор бази учнів','ДП':'Доступ за посиланням','ФТ':'Що приховує фото' };
+/* та сама функція, що й в іграх */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const RE_NEW=/([А-ЯІЇЄҐ]{2})-(\d+)-(\d{4})-([2-9A-Z]{4})/;
+const RE_OLD=/([А-ЯІЇЄҐ]{2})-(\d+)-(\d{1,2})(?![\d-])/;
+
+function parse(text){
+  const recs=[]; const lines=text.split(/\r?\n/);
+  let pendingName=null;
+  for(const raw of lines){
+    const L=raw.trim(); if(!L) continue;
+    let m;
+    if((m=L.match(/^Учень:\s*(.+)$/i))){ pendingName=m[1].trim(); continue; }
+    if((m=L.match(/^Код:\s*(.+)$/i))){ recs.push({name:pendingName||'', code:m[1].trim()}); pendingName=null; continue; }
+    const cm=L.match(RE_NEW)||L.match(RE_OLD);
+    if(!cm) continue;
+    if(/код:/i.test(L)) continue; // рядок «Бали…; код: …» усередині скопійованого підсумку (код береться з рядка «Код:»)
+    let name=L.replace(cm[0],'').replace(/[;\t|]+/g,' ').replace(/\s+/g,' ').trim().replace(/^[,\s]+|[,\s]+$/g,'');
+    recs.push({name, code:cm[0]});
+  }
+  return recs;
+}
+function check(r){
+  const m=r.code.match(RE_NEW);
+  if(!m){ const o=r.code.match(RE_OLD); return {...r, game:o?(GAMES[o[1]]||o[1]):'—', score:o?o[2]:'—', date:'—', st:'mid', msg:'⚠️ Старий формат коду — перевірити неможливо'}; }
+  const [ ,g,score,dm,sig]=m; const game=GAMES[g];
+  const date=dm.slice(0,2)+'.'+dm.slice(2);
+  if(!game) return {...r, game:g, score, date, st:'mid', msg:'⚠️ Невідома гра'};
+  if(!r.name) return {...r, game, score, date, st:'mid', msg:'⚠️ Не вказано ім’я учня'};
+  const ok=codeSig(g,score,dm,r.name)===sig;
+  return {...r, game, score, date, st:ok?'ok':'bad', msg:ok?'✅ Справжній':'❌ Не відповідає імені'};
+}
+let last=[];
+$('go').onclick=()=>{
+  const recs=parse($('inp').value).map(check); last=recs;
+  $('res').style.display='block';
+  if(!recs.length){ $('sum').innerHTML='<span>Не знайдено жодного коду. Перевірте формат.</span>'; $('tb').innerHTML=''; return; }
+  const c=k=>recs.filter(r=>r.st===k).length;
+  $('sum').innerHTML=`<span>Усього: <b>${recs.length}</b></span><span style="color:var(--ok)">✅ ${c('ok')}</span><span style="color:var(--bad)">❌ ${c('bad')}</span><span style="color:var(--mid)">⚠️ ${c('mid')}</span>`;
+  $('tb').innerHTML=recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name||'—')}</td><td>${esc(r.game)}</td><td>${esc(r.score)}</td><td>${esc(r.date)}</td><td class="code">${esc(r.code)}</td><td class="st ${r.st}">${r.msg}</td></tr>`).join('');
+};
+$('clr').onclick=()=>{ $('inp').value=''; $('res').style.display='none'; };
+$('prn').onclick=()=>{ try{window.print();}catch(e){} };
+$('csv').onclick=()=>{
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const rows=[['№','Учень','Гра','Бали','Дата','Код','Результат'],...last.map((r,i)=>[i+1,r.name,r.game,r.score,r.date,r.code,r.msg.replace(/^[^\wА-Яа-яІіЇїЄєҐґ]+/,'')])];
+  const blob=new Blob(['﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rezultaty.csv'; a.click();
+};
+</script>
+</body>
+</html>

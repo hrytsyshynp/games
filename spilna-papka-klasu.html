@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Спільна папка класу — симулятор прав доступу</title>
+<style>
+  :root{
+    --bg:#f2f5fb; --nav:#14213d; --nav2:#1f3160; --card:#fff; --line:#dbe2ef; --text:#15203a; --muted:#6a7590;
+    --acc:#2f6fed; --ok:#18a058; --mid:#e0a100; --bad:#d64545;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+  .top{background:var(--nav);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .top b{font-size:17px;letter-spacing:.3px}
+  .top .srv{font-family:Consolas,monospace;font-size:13px;background:var(--nav2);padding:4px 10px;border-radius:6px;opacity:.9}
+  .top .score{margin-left:auto;font-size:14px}
+  .grid{max-width:1000px;margin:14px auto;padding:0 12px;display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 14px rgba(20,33,61,.06)}
+  .card .hd{padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .card .bd{padding:14px}
+  .ticket .who{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+  .ava{width:42px;height:42px;border-radius:50%;background:#e6edff;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+  .who .n{font-weight:600}.who .r{font-size:12.5px;color:var(--muted)}
+  .badge{font-size:11.5px;padding:2px 8px;border-radius:10px;background:#e6edff;color:var(--acc);font-weight:600}
+  .badge.inc{background:#fde3e3;color:var(--bad)}
+  .msg{background:#f6f8fd;border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:10px 12px;line-height:1.5;font-size:15px}
+  .target{font-family:Consolas,monospace;font-size:13px;color:var(--muted);margin:10px 0 6px}
+  .seg{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .seg button{font:inherit;font-size:13.5px;padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .seg button.sel{background:var(--acc);border-color:var(--acc);color:#fff}
+  .seg button:disabled{cursor:default}
+  .choice{display:block;width:100%;text-align:left;margin:7px 0;padding:10px 12px;border-radius:9px;font:inherit;font-size:14.5px;background:#fff;border:1px solid var(--line);cursor:pointer}
+  .choice:hover:not(:disabled){border-color:var(--acc)}
+  .choice:disabled{cursor:default;opacity:.55}
+  .choice.picked{opacity:1;border-width:2px}
+  .choice.picked.best,.seg button.best{border-color:var(--ok)!important;background:#e2f5ea!important;color:var(--text)!important}
+  .choice.picked.ok,.seg button.ok{border-color:var(--mid)!important;background:#fdf2d6!important;color:var(--text)!important}
+  .choice.picked.bad,.seg button.bad{border-color:var(--bad)!important;background:#fbe2e2!important;color:var(--text)!important}
+  .fb{margin-top:10px;padding:10px 12px;border-radius:9px;font-size:14.5px;line-height:1.5}
+  .fb.best{background:#e2f5ea}.fb.ok{background:#fdf2d6}.fb.bad{background:#fbe2e2}
+  .row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .btn:disabled{opacity:.5;cursor:default}
+  table.acl{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.acl th,table.acl td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
+  table.acl th:first-child,table.acl td:first-child{text-align:left}
+  table.acl th{color:var(--muted);font-weight:600}
+  .lv{display:inline-block;min-width:26px;padding:2px 5px;border-radius:5px;font-weight:700;font-size:11.5px}
+  .lv0{background:#eef1f6;color:#9aa3b5}.lv1{background:#e3f0ff;color:#2f6fed}.lv2{background:#e9e3ff;color:#6a4bd6}.lv3{background:#fff0d6;color:#a46a00}.lv4{background:#fde3e3;color:#c03333}
+  .flash{animation:fl 1s}
+  @keyframes fl{0%{background:#fff5b8}100%{background:transparent}}
+  .legend{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}
+  .log{font-family:Consolas,monospace;font-size:12.5px;background:#0f1730;color:#b9c6e8;border-radius:8px;padding:10px;max-height:150px;overflow:auto;line-height:1.5}
+  input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius:8px;border:1px solid var(--line)}
+  table.res{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px solid var(--line)}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:19px;border:1px dashed var(--acc);border-radius:8px;padding:6px 12px;display:inline-block;background:#eef3ff}
+  .muted{color:var(--muted)}
+  p{line-height:1.55}
+  @media (max-width:800px){.grid{grid-template-columns:1fr}}
+  @media print{.top,.row{display:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="top"><b>🗄 Спільна папка класу</b><span class="srv" id="srv">\\SCHOOL-SRV\10-А\</span><span class="score" id="score"></span></div>
+<div class="grid">
+  <div class="card ticket"><div class="hd"><span id="thd">Запит</span><span id="tno"></span></div><div class="bd" id="ticket"></div></div>
+  <div>
+    <div class="card"><div class="hd">Права доступу (ACL)</div><div class="bd"><div id="acl"></div>
+      <div class="legend"><span class="lv lv0">—</span> немає · <span class="lv lv1">Ч</span> читання · <span class="lv lv2">З</span> лише запис · <span class="lv lv3">ЗМ</span> зміна · <span class="lv lv4">ПК</span> повний контроль</div></div></div>
+    <div class="card" style="margin-top:14px"><div class="hd">Журнал подій</div><div class="bd"><div class="log" id="log">Сервер запущено.</div></div></div>
+  </div>
+</div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати запити, папки й пояснення.
+   Тема: «Локальні мережі. Доступ до файлової системи» (Теми 6.1–6.2).
+   Рівні доступу: 0 — немає, 1 — читання, 2 — лише запис (здати файл,
+   не бачачи чужих), 3 — зміна, 4 — повний контроль.
+   type:'acl' — гравець обирає рівень; grade — оцінка для кожного рівня.
+   type:'choice' — звичайний вибір із варіантів.
+   ===================================================================== */
+const LEVELS = ['Немає доступу','Читання','Лише запис','Зміна','Повний контроль'];
+const SHORT  = ['—','Ч','З','ЗМ','ПК'];
+const FOLDERS = ['Завдання','Роботи учнів','Оцінки','Проєкт_група1','Фото_екскурсія'];
+const GROUPS  = ['Учитель','Учні 10-А','Група 1','Батьки'];
+const INITIAL = { // [Учитель, Учні, Група1, Батьки]
+  'Завдання':[4,0,0,0], 'Роботи учнів':[4,0,0,0], 'Оцінки':[4,0,0,0], 'Проєкт_група1':[1,0,0,0], 'Фото_екскурсія':[4,0,0,0]
+};
+
+const TICKETS = [
+ {type:'acl', ava:'👩‍🏫', who:'Олена Петрівна', role:'учителька інформатики', folder:'Завдання', group:'Учні 10-А',
+  msg:'Я викладаю в папку «Завдання» умови практичних робіт. Налаштуй, будь ласка, щоб учні їх бачили.',
+  grade:['bad','best','bad','bad','bad'],
+  why:['Без доступу учні не побачать завдань.',
+       'Принцип найменших привілеїв: учням достатньо відкривати файли. Змінювати чи видаляти завдання вони не повинні.',
+       '«Лише запис» дозволяє класти файли, але не читати їх — учні не побачать умов.',
+       'З правом «Зміна» будь-хто з учнів зможе випадково або навмисно видалити чи переписати завдання.',
+       'Повний контроль дає змогу навіть змінювати права інших — учням це точно не потрібно.']},
+ {type:'acl', ava:'👩‍🏫', who:'Олена Петрівна', role:'учителька інформатики', folder:'Роботи учнів', group:'Учні 10-А',
+  msg:'А сюди учні мають здавати свої виконані роботи. Тільки щоб ніхто не міг списати в іншого!',
+  grade:['bad','bad','best','bad','bad'],
+  why:['Без доступу учні не зможуть здати роботи.',
+       'Читання дозволяє бачити чужі роботи, але не здавати свої.',
+       'Саме так працює «скринька для робіт»: учень кладе файл, але не бачить і не може змінити роботи однокласників.',
+       'Зі «Зміною» кожен побачить, скопіює чи навіть видалить чужу роботу.',
+       'Повний контроль учням не потрібен ніколи.']},
+ {type:'acl', ava:'🧑‍🎓', who:'Олег', role:'учень 10-А', folder:'Оцінки', group:'Учні 10-А',
+  msg:'Привіт! Відкрий нам папку «Оцінки», хоча б на читання. Хочу глянути свої бали за семестр 🙏',
+  grade:['best','bad','bad','bad','bad'],
+  why:['Правильно. У файлі оцінки всього класу — це персональні дані інших учнів. Свої бали Олег бачить в електронному щоденнику.',
+       'Читання відкриє Олегу оцінки всіх однокласників. Це поширення чужих персональних даних.',
+       '«Лише запис» дав би змогу підкласти у папку будь-який файл. Навіщо?',
+       'Зміна оцінок учнями — найгірший сценарій.',
+       'Повний контроль над журналом оцінок для учня — неприпустимо.']},
+ {type:'acl', ava:'👨‍🏫', who:'Андрій Іванович', role:'класний керівник', folder:'Проєкт_група1', group:'Група 1',
+  msg:'Група 1 (Ірина, Максим, Софія) робить спільний проєкт. Їм треба разом редагувати файли в папці «Проєкт_група1».',
+  grade:['bad','bad','bad','best','ok'],
+  why:['Без доступу група не зможе працювати.',
+       'Тільки читання — група не зможе вносити зміни.',
+       'Лише запис — учасники не бачитимуть файли одне одного.',
+       'Учасникам групи — «Зміна»: вони створюють, редагують і видаляють файли проєкту, але не змінюють права.',
+       'Працюватиме, але повний контроль дозволяє змінювати права доступу. Це зайве — достатньо «Зміни».']},
+ {type:'choice', ava:'👩', who:'Мама Софії', role:'батьківський комітет', badge:'Запит',
+  msg:'Створіть, будь ласка, один спільний акаунт «batky» з паролем 1111, щоб усі батьки могли зайти в папку з фото з екскурсії.',
+  choices:[
+   {t:'Створити акаунт batky / 1111 з правом «Зміна»', kind:'bad', fx:{f:'Фото_екскурсія',g:'Батьки',v:3},
+    why:'Спільний акаунт зі слабким паролем знатимуть усі — і не тільки батьки. А «Зміна» дозволить видалити фото.'},
+   {t:'Не створювати спільний акаунт: надіслати фото батькам, які дали згоду, або дати доступ на читання особистим акаунтам', kind:'best', fx:{f:'Фото_екскурсія',g:'Батьки',v:1},
+    why:'Кожен користувач — свій обліковий запис. Тоді видно, хто що відкривав, і доступ легко забрати. На фото діти — тому потрібна згода батьків.'},
+   {t:'Створити акаунт batky з надійним паролем і правом «Читання»', kind:'ok', fx:{f:'Фото_екскурсія',g:'Батьки',v:1},
+    why:'Надійніше, але спільний пароль усе одно передаватимуть з рук у руки, і невідомо, хто ним користується.'}
+  ]},
+ {type:'choice', ava:'👧', who:'Даша', role:'учениця 10-А', badge:'Запит',
+  msg:'Я забула свій пароль 😭 Скажи мені пароль від акаунта Олени Петрівни, я тільки швиденько здам роботу!',
+  choices:[
+   {t:'Повідомити пароль учительки — це ж для доброї справи', kind:'bad',
+    why:'Пароль — особиста інформація власника. З паролем учительки Даша отримає повний контроль над усіма папками.'},
+   {t:'Відмовити і скинути пароль самої Даші через адміністратора', kind:'best',
+    why:'Чужими обліковими записами не користуються навіть «на хвилинку». Забутий пароль скидають — і користувач задає новий.'},
+   {t:'Дати Даші свій пароль', kind:'bad',
+    why:'Тепер усі дії Даші записуватимуться у журнал як твої. І ти знову порушуєш правило «один користувач — один акаунт».'}
+  ]},
+ {type:'incident', ava:'🚨', who:'Система', role:'автоматичне сповіщення', badge:'Інцидент'}
+];
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+function fresh(){ const acl={}; for(const f in INITIAL) acl[f]=INITIAL[f].slice(); return {player:'',i:0,acl,picks:[],t0:Date.now(),log:['Сервер запущено.']}; }
+function log(s){ const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'}); S.log.push(`[${t}] ${s}`); $('log').innerHTML=S.log.map(esc).join('<br>'); $('log').scrollTop=1e6; }
+function drawAcl(hl){
+  $('acl').innerHTML = `<table class="acl"><tr><th>Папка</th>${GROUPS.map(g=>`<th>${g}</th>`).join('')}</tr>`+
+    FOLDERS.map(f=>`<tr><td>📁 ${f}</td>${GROUPS.map((g,k)=>`<td class="${hl&&hl.f===f&&hl.g===g?'flash':''}"><span class="lv lv${S.acl[f][k]}">${SHORT[S.acl[f][k]]}</span></td>`).join('')}</tr>`).join('')+`</table>`;
+}
+function drawScore(){
+  const p=S.picks.filter(Boolean); const sc=p.reduce((s,x)=>s+(x.kind==='best'?100:x.kind==='ok'?50:0),0);
+  $('score').textContent = S.i<TICKETS.length ? `Запит ${S.i+1} з ${TICKETS.length} · ${sc} балів` : `${sc} балів`;
+}
+function set(f,g,v){ S.acl[f][GROUPS.indexOf(g)] = v; drawAcl({f,g}); log(`ACL: ${f} → ${g}: ${LEVELS[v]}`); }
+
+function start(){
+  S = fresh(); drawAcl(); $('log').textContent='Сервер запущено.'; drawScore(); $('score').textContent='';
+  $('thd').textContent='Початок зміни'; $('tno').textContent='';
+  $('ticket').innerHTML = `<div class="who"><div class="ava">🧑‍💻</div><div><div class="n">Ти — помічник адміністратора</div><div class="r">шкільний файловий сервер</div></div></div>
+    <p>Адміністратор поїхав на курси й залишив тебе відповідати за спільну папку 10-А. Надходитимуть запити від учителів, учнів і батьків. Твоє завдання — дати кожному <b>рівно стільки доступу, скільки потрібно</b>, і не більше.</p>
+    <p class="muted">Праворуч — таблиця прав доступу, вона змінюється після кожного рішення. А наприкінці на сервері станеться інцидент…</p>
+    <label>Твоє ім’я та клас:<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Максим Л., 10-А"></label>
+    <div class="row"><button class="btn primary" id="go">Почати зміну →</button></div>`;
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; S.t0=Date.now(); log(`Вхід: ${S.player}`); next(); };
+}
+
+function header(t){
+  $('thd').innerHTML = `${t.badge?`<span class="badge ${t.type==='incident'?'inc':''}">${t.badge}</span>`:'<span class="badge">Права доступу</span>'}`;
+  $('tno').textContent = `#${1040+S.i}`;
+  $('srv').textContent = t.folder ? `\\\\SCHOOL-SRV\\10-А\\${t.folder}\\` : '\\\\SCHOOL-SRV\\10-А\\';
+  return `<div class="who"><div class="ava">${t.ava}</div><div><div class="n">${esc(t.who)}</div><div class="r">${esc(t.role)}</div></div></div><div class="msg">${esc(t.msg||'')}</div>`;
+}
+function feedback(kind, why, bestText){
+  const head = kind==='best'?'✅ Правильно.':kind==='ok'?'🟡 Працює, але є краще.':'❌ Помилка.';
+  return `<div class="fb ${kind}"><b>${head}</b> ${esc(why)}${kind!=='best'&&bestText?`<br><b>Найкраще:</b> ${esc(bestText)}.`:''}</div>
+    <div class="row"><button class="btn primary" id="nx">${S.i+1<TICKETS.length?'Наступний запит →':'Завершити зміну'}</button></div>`;
+}
+function bindNext(){ $('nx').onclick=()=>{ S.i++; next(); window.scrollTo({top:0,behavior:'smooth'}); }; $('nx').focus(); }
+
+function next(){
+  drawScore();
+  if (S.i>=TICKETS.length) return finish();
+  const t = TICKETS[S.i];
+  if (t.type==='acl'){
+    let pick=-1;
+    $('ticket').innerHTML = header(t) + `<div class="target">📁 ${esc(t.folder)} · 👥 ${esc(t.group)}</div>
+      <div class="seg" id="seg">${LEVELS.map((l,k)=>`<button data-k="${k}">${l}</button>`).join('')}</div>
+      <div class="row"><button class="btn primary" id="apply" disabled>Застосувати</button></div><div id="fb"></div>`;
+    document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{ pick=+b.dataset.k; document.querySelectorAll('#seg button').forEach(x=>x.classList.toggle('sel',x===b)); $('apply').disabled=false; });
+    $('apply').onclick=()=>{
+      const kind=t.grade[pick]; S.picks[S.i]={kind,level:pick};
+      document.querySelectorAll('#seg button').forEach(x=>{ x.disabled=true; x.classList.remove('sel'); });
+      document.querySelector(`#seg button[data-k="${pick}"]`).classList.add(kind);
+      $('apply').parentNode.remove();
+      set(t.folder,t.group,pick);
+      $('fb').innerHTML = feedback(kind, t.why[pick], LEVELS[t.grade.indexOf('best')]); drawScore(); bindNext();
+    };
+  } else if (t.type==='choice'){
+    $('ticket').innerHTML = header(t) + `<div id="ch" style="margin-top:10px"></div><div id="fb"></div>`;
+    t.choices.map((c,k)=>k).sort(()=>Math.random()-.5).forEach(k=>{
+      const c=t.choices[k], b=document.createElement('button'); b.className='choice'; b.textContent=c.t;
+      b.onclick=()=>{ document.querySelectorAll('.choice').forEach(x=>x.disabled=true); b.classList.add('picked',c.kind);
+        S.picks[S.i]={kind:c.kind}; if(c.fx) set(c.fx.f,c.fx.g,c.fx.v); else log(`Запит від ${t.who}: опрацьовано`);
+        $('fb').innerHTML=feedback(c.kind,c.why,t.choices.find(x=>x.kind==='best').t); drawScore(); bindNext(); };
+      $('ch').appendChild(b);
+    });
+  } else incident(t);
+}
+
+/* Інцидент: що станеться, залежить від того, які права учні отримали на папку «Завдання» */
+function incident(t){
+  const lvl = S.acl['Завдання'][GROUPS.indexOf('Учні 10-А')];
+  const grades = S.acl['Оцінки'][GROUPS.indexOf('Учні 10-А')];
+  const broken = lvl>=3;
+  t.msg = broken
+    ? 'УВАГА! О 08:52 з облікового запису учня в папці «Завдання» видалено 14 файлів. Учителька не може провести практичну роботу.'
+    : 'О 08:52 учень спробував видалити файли в папці «Завдання». Операцію заблоковано: недостатньо прав. Файли на місці.';
+  log(broken?'❗ Видалено 14 файлів у «Завдання»':'⛔ Спроба видалення в «Завдання» заблокована');
+  if (grades>=1) log('❗ Учень відкрив файл «Оцінки_10-А.xlsx»');
+  if (!broken){
+    S.picks[S.i]={kind:'best'};
+    $('ticket').innerHTML = header(t) + `<div class="fb best" style="margin-top:12px"><b>✅ Інцидент не стався.</b> Учні мали лише право читання, тож видалити завдання не змогли. Ось навіщо принцип найменших привілеїв.${grades>=1?'<br><br>⚠️ Але журнал показує: учень відкрив файл з оцінками всього класу — через доступ, який ти надав раніше.':''}</div>
+      <div class="row"><button class="btn primary" id="nx">Завершити зміну</button></div>`;
+    return bindNext();
+  }
+  $('ticket').innerHTML = header(t) + `<p><b>Що зробиш першим?</b></p><div id="ch"></div><div id="fb"></div>`;
+  const choices = [
+   {t:'Відновити файли з резервної копії (тіньової копії) і забрати в учнів право «Зміна» — залишити «Читання»', kind:'best',
+    why:'Спершу повертаємо дані, потім закриваємо причину. Помилку в правах треба виправити, інакше все повториться.'},
+   {t:'Відновити файли, а права залишити як є', kind:'ok', why:'Файли повернулися, але причина інциденту нікуди не зникла.'},
+   {t:'Знайти винного і покарати, файли нехай учителька завантажить ще раз', kind:'bad', why:'Розібратися, хто це зробив, теж треба, але вразливість у правах залишилася. Пошук винного не замінює виправлення налаштувань.'}
+  ];
+  choices.sort(()=>Math.random()-.5).forEach(c=>{
+    const b=document.createElement('button'); b.className='choice'; b.textContent=c.t;
+    b.onclick=()=>{ document.querySelectorAll('.choice').forEach(x=>x.disabled=true); b.classList.add('picked',c.kind);
+      S.picks[S.i]={kind:c.kind==='best'?'ok':c.kind}; // повний бал недоступний: інцидент уже стався
+      if(c.kind==='best') set('Завдання','Учні 10-А',1);
+      $('fb').innerHTML=feedback(c.kind,c.why,choices.find(x=>x.kind==='best').t); drawScore(); bindNext(); };
+    $('ch').appendChild(b);
+  });
+}
+
+function finish(){
+  const p=S.picks.filter(Boolean);
+  const best=p.filter(x=>x.kind==='best').length, ok=p.filter(x=>x.kind==='ok').length, bad=p.filter(x=>x.kind==='bad').length;
+  const score=p.reduce((s,x)=>s+(x.kind==='best'?100:x.kind==='ok'?50:0),0), max=TICKETS.length*100, pct=Math.round(score/max*100);
+  const chk=(score*17+S.player.length*3+best*5)%97, code=makeCode('СП',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const title = pct>=85?'🏅 Надійний адміністратор':pct>=60?'🛠 Добрий старт':'⚠️ Сервер під загрозою';
+  const summary=`Спільна папка класу — ${S.player}, ${date}\nРішень: найкращих ${best}, прийнятних ${ok}, помилкових ${bad}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  $('thd').innerHTML='<span class="badge">Підсумок зміни</span>'; $('tno').textContent=''; $('srv').textContent='\\\\SCHOOL-SRV\\10-А\\';
+  $('ticket').innerHTML=`<h2 style="margin:0 0 4px">${title}</h2><p class="muted">${esc(S.player)} · ${date}</p>
+    <table class="res"><tr><td>✅ Найкращих рішень</td><td>${best} з ${TICKETS.length}</td></tr><tr><td>🟡 Прийнятних</td><td>${ok}</td></tr><tr><td>❌ Помилкових</td><td>${bad}</td></tr>
+    <tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td><b>Рахунок</b></td><td>${score} з ${max} (${pct}%)</td></tr></table>
+    <p>Код результату для вчителя: <span class="code">${code}</span></p>
+    <h3>Правила адміністратора</h3>
+    <p>🔑 Найменші привілеї: стільки прав, скільки потрібно для роботи · 👤 Один користувач — один обліковий запис · 🙅 Паролі нікому не передаються · 🔒 Персональні дані (оцінки, фото) — тільки тим, кому вони належать або потрібні · 🧾 Журнал подій показує, хто що робив · 💾 Резервна копія рятує від помилок у правах.</p>
+    <div class="row"><button class="btn" id="copy">📋 Копіювати результат</button><button class="btn" id="prn">🖨 Друк / PDF</button><button class="btn primary" id="again">Нова зміна</button></div>`;
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати');}catch(err){b.textContent='Не вдалося скопіювати';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=start;
+}
+
+start();
+</script>
+</body>
+</html>

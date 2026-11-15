@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Що приховує фото — гра про метадані та видимі деталі</title>
+<style>
+  :root{ --bg:#1a1a1c; --pan:#252528; --pan2:#2f2f33; --line:#3a3a40; --text:#ececef; --muted:#9a9aa5; --acc:#ff8a3d; --ok:#4cd38a; --mid:#ffc857; --bad:#ff5c5c; }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+  .top{display:flex;align-items:center;gap:12px;padding:8px 14px;background:#121214;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .top b{color:var(--acc);font-size:16px;letter-spacing:.4px}
+  .steps{display:flex;gap:4px}
+  .steps span{font-size:12px;padding:4px 9px;border-radius:4px;background:var(--pan);color:var(--muted)}
+  .steps span.on{background:var(--acc);color:#1a1205;font-weight:700}
+  .steps span.done{color:var(--ok)}
+  .top .sc{margin-left:auto;font-size:13.5px;color:var(--muted)}
+  .layout{max-width:1080px;margin:0 auto;padding:14px;display:grid;grid-template-columns:1fr 330px;gap:14px}
+  .stage{background:var(--pan);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .post{background:#fff;color:#222;border-radius:10px;overflow:hidden;max-width:640px;margin:0 auto}
+  .post .ph{display:flex;gap:8px;align-items:center;padding:8px 12px;font-size:14px}
+  .post .ph i{font-style:normal;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#ff8a3d,#ff3d77);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+  .post svg{display:block;width:100%;height:auto;cursor:crosshair}
+  .post .cap{padding:8px 12px 12px;font-size:14.5px;line-height:1.45;cursor:crosshair;border-radius:6px}
+  .post .cap:hover{background:#fff4ea}
+  .hint{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 0}
+  .side{display:flex;flex-direction:column;gap:12px}
+  .box{background:var(--pan);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .box h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+  .found{font-size:14px;line-height:1.5}
+  .found div{padding:6px 8px;border-radius:5px;background:var(--pan2);margin:5px 0}
+  .found div.ok{border-left:3px solid var(--ok)}
+  .found div.miss{border-left:3px solid var(--bad);color:var(--muted)}
+  .meter{height:8px;border-radius:4px;background:var(--pan2);overflow:hidden;margin:6px 0}
+  .meter i{display:block;height:100%;background:var(--acc);transition:width .3s}
+  .exif{width:100%;border-collapse:collapse;font-size:13px}
+  .exif td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .exif td:first-child{color:var(--muted);width:42%}
+  .exif td.v{font-family:Consolas,monospace;font-size:12.5px;word-break:break-all}
+  .exif tr.del td.v{text-decoration:line-through;color:#6a6a74}
+  .exif tr.g td{background:rgba(76,211,138,.12)}.exif tr.w td{background:rgba(255,92,92,.14)}
+  .bin{font:inherit;font-size:12px;padding:3px 7px;border-radius:4px;border:1px solid var(--line);background:var(--pan2);color:var(--text);cursor:pointer}
+  .bin.on{background:var(--bad);border-color:var(--bad);color:#fff}
+  .btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:var(--pan2);color:var(--text);cursor:pointer}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#1a1205;font-weight:700}
+  .btn:disabled{opacity:.45;cursor:default}
+  .row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .fb{margin-top:10px;padding:10px 12px;border-radius:6px;font-size:14px;line-height:1.5;background:var(--pan2)}
+  .fb.best{border-left:3px solid var(--ok)}.fb.ok{border-left:3px solid var(--mid)}.fb.bad{border-left:3px solid var(--bad)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;color:#fff;padding:9px 16px;border-radius:20px;font-size:14px;pointer-events:none;opacity:0;transition:opacity .25s}
+  .toast.on{opacity:1}
+  .choice{display:block;width:100%;text-align:left;margin:8px 0;padding:10px 12px;border-radius:6px;font:inherit;font-size:14.5px;background:var(--pan2);border:1px solid var(--line);color:var(--text);cursor:pointer}
+  .choice:hover:not(:disabled){border-color:var(--acc)}
+  .choice:disabled{opacity:.55;cursor:default}
+  .choice.picked{opacity:1;border-width:2px}
+  .choice.picked.best{border-color:var(--ok)}.choice.picked.bad{border-color:var(--bad)}.choice.picked.ok{border-color:var(--mid)}
+  input[type=text]{width:100%;font:inherit;padding:9px 11px;border-radius:6px;border:1px solid var(--line);background:var(--pan2);color:var(--text)}
+  table.res{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+  table.res td{padding:6px 4px;border-bottom:1px solid var(--line)}
+  table.res td:last-child{text-align:right;font-weight:600}
+  .code{font-family:Consolas,monospace;font-size:19px;border:1px dashed var(--acc);border-radius:6px;padding:6px 12px;display:inline-block;color:var(--acc)}
+  .muted{color:var(--muted)}
+  p{line-height:1.55}
+  .ring{fill:none;stroke:#ff3d3d;stroke-width:4;stroke-dasharray:8 5}
+  @media (max-width:860px){.layout{grid-template-columns:1fr}}
+  @media print{.top,.row{display:none}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+<div class="top"><b>📷 ЩО ПРИХОВУЄ ФОТО</b><div class="steps" id="steps"></div><span class="sc" id="sc"></span></div>
+<div class="layout" id="lay"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== Код результату для вчителя (однаковий в усіх іграх комплекту) =====
+   Формат: ГРА-БАЛИ-ДДММ-КОНТРОЛЬ. Контрольна частина залежить від гри, балів,
+   дати та повного імені учня. Перевірка — сторінка «Перевірка результатів». */
+function normName(n){ return String(n||'').toLowerCase().replace(/[’ʼ`´]/g,"'").replace(/\s+/g,' ').trim(); }
+function codeSig(g,score,dm,name){
+  const s=[g,score,dm,normName(name),'kiberihry-2026'].join('|');
+  let h=2166136261>>>0; for(const ch of s){ h^=ch.codePointAt(0); h=Math.imul(h,16777619)>>>0; }
+  const A='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; let r=''; for(let i=0;i<4;i++){ r+=A[h%31]; h=Math.floor(h/31); } return r;
+}
+function makeCode(g,score,name){
+  const d=new Date(), dm=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0');
+  return g+'-'+score+'-'+dm+'-'+codeSig(g,score,dm,name);
+}
+
+/* =====================================================================
+   НАЛАШТУВАННЯ — учитель може змінювати фото-сцени, «витоки» й метадані.
+   Тема: «Основи комп’ютерної графіки» (Тема 10.1): растрові файли, формати й метадані EXIF.
+   hot — видимі деталі, які розкривають персональні дані (координати в системі 640×400).
+   exif — метадані файлу; del: 'must' — обов’язково видалити, 'opt' — на розсуд, 'keep' — безпечні.
+   Усі люди, адреси й координати вигадані.
+   ===================================================================== */
+const PHOTOS = [
+ {title:'Вид з мого нового балкона 🔥', user:'iryna.b',
+  svg:`<rect width="640" height="400" fill="#ffb27a"/><rect y="0" width="640" height="180" fill="url(#sky1)"/>
+   <defs><linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b5bff"/><stop offset="1" stop-color="#ff9a5a"/></linearGradient></defs>
+   <circle cx="480" cy="150" r="38" fill="#ffd36e"/>
+   <rect x="40" y="150" width="140" height="250" fill="#8a6b5c"/><rect x="200" y="120" width="120" height="280" fill="#7a5e52"/><rect x="430" y="170" width="170" height="230" fill="#8e7062"/>
+   ${[0,1,2,3].map(i=>`<rect x="${60+i*30}" y="180" width="18" height="24" fill="#ffe08a"/><rect x="${60+i*30}" y="230" width="18" height="24" fill="#4b3a33"/>`).join('')}
+   <rect x="0" y="330" width="640" height="70" fill="#5b4a44"/><rect x="0" y="322" width="640" height="10" fill="#3d322e"/>
+   ${[0,1,2,3,4,5,6,7,8,9,10,11,12].map(i=>`<rect x="${i*50+8}" y="300" width="6" height="30" fill="#3d322e"/>`).join('')}
+   <g><rect x="16" y="352" width="190" height="40" rx="4" fill="#1f4e9c"/><text x="111" y="378" fill="#fff" font-size="17" font-family="Arial" text-anchor="middle" font-weight="bold">вул. Квіткова, 12</text></g>
+   <g><rect x="520" y="280" width="90" height="40" rx="6" fill="#d0d4da"/><rect x="532" y="300" width="66" height="16" fill="#fff" stroke="#333"/><text x="565" y="313" font-size="11" font-family="Arial" text-anchor="middle">BC 1234 AE</text></g>
+   <circle cx="330" cy="365" r="16" fill="#3fa34d"/><rect x="326" y="365" width="8" height="30" fill="#6b4a2b"/>`,
+  hot:[{id:'addr',x:16,y:352,w:190,h:40,t:'Табличка з назвою вулиці й номером будинку — точна домашня адреса.'},
+       {id:'car',x:520,y:280,w:90,h:40,t:'Номерний знак авто на подвір’ї допомагає встановити власника й підтвердити адресу.'}],
+  caption:{text:'Нарешті переїхали! Тепер кожен вечір такий захід сонця 🌇', hot:null},
+  exif:[['Формат','JPEG','keep'],['Розмір','4000 × 3000 пікселів','keep'],['Модель камери','Smartphone X12','keep'],['Серійний номер пристрою','SNX12-88A7-31F0','must'],
+        ['Дата і час зйомки','14.03.2026, 19:42','opt'],['GPS-координати','50.4417° N, 30.5212° E','must'],['Автор','Ірина Бондар','must']]},
+ {title:'Завтра в Барселону на 2 тижні! ✈️', user:'max.gnat',
+  svg:`<rect width="640" height="400" fill="#d9c3a5"/><rect x="0" y="0" width="640" height="400" fill="url(#wood)"/>
+   <defs><pattern id="wood" width="80" height="400" patternUnits="userSpaceOnUse"><rect width="80" height="400" fill="#c9a77f"/><rect x="78" width="2" height="400" fill="#b08d66"/></pattern></defs>
+   <g transform="rotate(-6 200 170)"><rect x="60" y="90" width="300" height="150" rx="10" fill="#fff"/><rect x="60" y="90" width="300" height="34" rx="10" fill="#1d6fd8"/>
+     <text x="76" y="113" fill="#fff" font-size="15" font-family="Arial" font-weight="bold">BOARDING PASS</text>
+     <text x="76" y="150" font-size="13" font-family="Arial">GNATIUK/MAKSYM</text><text x="76" y="172" font-size="13" font-family="Arial">KBP → BCN  ·  15 JUL</text>
+     <rect x="260" y="140" width="80" height="80" fill="#222"/>${[0,1,2,3,4,5,6].map(i=>`<rect x="${266+i*10}" y="${146+(i*13)%60}" width="6" height="6" fill="#fff"/>`).join('')}</g>
+   <g transform="rotate(8 470 250)"><rect x="390" y="170" width="170" height="220" rx="10" fill="#21345c"/><text x="475" y="230" fill="#e8c46a" font-size="15" font-family="Arial" text-anchor="middle">ПАСПОРТ</text>
+     <rect x="410" y="270" width="130" height="90" rx="4" fill="#efe6cf"/><text x="420" y="292" font-size="10" font-family="Arial">ГНАТЮК МАКСИМ</text><text x="420" y="310" font-size="10" font-family="Arial">02.07.2009</text><text x="420" y="328" font-size="10" font-family="Arial">FX 123456</text></g>
+   <circle cx="560" cy="80" r="44" fill="#fff" stroke="#bbb"/><circle cx="560" cy="80" r="30" fill="#6b3f1f"/>
+   <rect x="90" y="300" width="160" height="70" rx="12" fill="#e8463c"/><text x="170" y="342" fill="#fff" font-size="15" font-family="Arial" text-anchor="middle">🕶 сонцезахисні</text>`,
+  hot:[{id:'pass',x:60,y:80,w:300,h:170,t:'Посадковий талон: ім’я, рейс, дата. За штрихкодом можна дістати дані бронювання.'},
+       {id:'doc',x:380,y:165,w:190,h:235,t:'Розгорнутий документ: ПІБ, дата народження й номер — готовий набір для шахраїв.'}],
+  caption:{text:'Завтра в Барселону на 2 тижні! ✈️ Квартира залишається без нагляду, але хто там полізе 😅', hot:{id:'away',t:'Підпис повідомляє всім, що дім два тижні буде порожній.'}},
+  exif:[['Формат','HEIC','keep'],['Розмір','4032 × 3024 пікселів','keep'],['Модель камери','Phone Pro 15','keep'],['Дата і час зйомки','14.07.2026, 22:15','opt'],
+        ['GPS-координати','50.4521° N, 30.4430° E','must'],['Автор','Максим Гнатюк','must'],['Програма обробки','FotoFix 2.3','keep']]},
+ {title:'Моє робоче місце для навчання 😎', user:'sofia.d',
+  svg:`<rect width="640" height="400" fill="#e9eef3"/><rect y="300" width="640" height="100" fill="#b98a5e"/>
+   <rect x="150" y="60" width="340" height="210" rx="10" fill="#222"/><rect x="164" y="74" width="312" height="182" fill="#f5f7fa"/>
+   <rect x="164" y="74" width="312" height="24" fill="#217346"/><text x="174" y="91" fill="#fff" font-size="12" font-family="Arial">Журнал_10-Б.xlsx</text>
+   ${[0,1,2,3,4].map(i=>`<text x="174" y="${120+i*24}" font-size="12" font-family="Arial">${['Бондар І. — 10,4','Гнатюк М. — 8,7','Дмитренко С. — 11,2','Коваль Н. — 7,9','Литвин О. — 9,6'][i]}</text>`).join('')}
+   <rect x="300" y="270" width="40" height="30" fill="#333"/><rect x="260" y="296" width="120" height="8" fill="#333"/>
+   <g transform="rotate(5 520 110)"><rect x="470" y="70" width="100" height="90" fill="#ffe86b"/><text x="480" y="100" font-size="12" font-family="Arial">пароль:</text><text x="480" y="122" font-size="12" font-family="Arial" font-weight="bold">Sonechko2009</text></g>
+   <g transform="rotate(-4 90 340)"><rect x="30" y="310" width="140" height="80" rx="6" fill="#fff" stroke="#999"/><rect x="40" y="320" width="40" height="50" fill="#9ab"/><text x="88" y="336" font-size="10" font-family="Arial">УЧНІВСЬКИЙ</text><text x="88" y="352" font-size="10" font-family="Arial">Дмитренко С.</text><text x="88" y="368" font-size="10" font-family="Arial">Ліцей №7</text></g>
+   <circle cx="560" cy="330" r="28" fill="#fff" stroke="#999"/><rect x="420" y="320" width="70" height="20" rx="4" fill="#555"/>
+   <path d="M70 300 Q60 220 100 200 Q130 230 110 300 Z" fill="#3fa34d"/>`,
+  hot:[{id:'pwd',x:465,y:65,w:110,h:105,t:'Стікер з паролем — видно кожному, хто побачить фото.'},
+       {id:'grades',x:164,y:74,w:312,h:182,t:'На екрані відкрито журнал з оцінками всього класу — це персональні дані інших учнів.'},
+       {id:'card',x:25,y:305,w:150,h:90,t:'Учнівський квиток: ім’я, фото, навчальний заклад.'}],
+  caption:{text:'Нарешті облаштувала куточок для навчання 💻', hot:null},
+  exif:[['Формат','JPEG','keep'],['Розмір','3264 × 2448 пікселів','keep'],['Модель камери','Smartphone A5','keep'],['Серійний номер пристрою','SNA5-11C2-7E90','must'],
+        ['GPS-координати','50.4380° N, 30.5160° E','must'],['Автор','Софія Дмитренко','must'],['Дата і час зйомки','02.09.2026, 16:05','opt']]}
+];
+const QUIZ = [
+ {q:'Ти зробив скриншот фото й опублікував його. Що сталося з метаданими оригіналу?',
+  choices:[
+   {t:'Скриншот — це новий файл без EXIF оригіналу, але все, що видно на зображенні, залишилося', kind:'best', why:'Метадані належать файлу, а не картинці. Скриншот їх «губить», але табличку з адресою чи стікер з паролем — ні.'},
+   {t:'Метадані скопіювалися в скриншот', kind:'bad', why:'Скриншот створюється заново, тож метадані оригіналу в нього не потрапляють, хоча у скриншота можуть бути власні.'},
+   {t:'Скриншот повністю безпечний — можна публікувати будь-що', kind:'bad', why:'Видимі деталі на зображенні нікуди не зникли.'}]},
+ {q:'Як найнадійніше уникнути витоку геолокації через фото?',
+  choices:[
+   {t:'Вимкнути геотеги в налаштуваннях камери й перевіряти властивості файлу перед публікацією', kind:'best', why:'Найкраще — щоб координати взагалі не записувалися, а перед публікацією ще раз переглянути метадані.'},
+   {t:'Перейменувати файл', kind:'bad', why:'Назва файлу ніяк не впливає на EXIF усередині нього.'},
+   {t:'Зменшити розмір фото', kind:'ok', why:'Деякі редактори під час зміни розміру прибирають EXIF, але багато хто його зберігає. Покладатися на це не варто.'}]}
+];
+
+/* ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S;
+function fresh(){ return {player:'',i:-1,found:{},misses:0,exifPts:[],exifMax:[],quiz:[],t0:Date.now()}; }
+const hotsOf = p => p.hot.length + (p.caption.hot?1:0);
+function toast(t){ $('toast').textContent=t; $('toast').classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(()=>$('toast').classList.remove('on'),1600); }
+function head(){
+  $('steps').innerHTML = PHOTOS.map((p,k)=>`<span class="${k===S.i?'on':k<S.i?'done':''}">Фото ${k+1}</span>`).join('')+`<span class="${S.i===PHOTOS.length?'on':S.i>PHOTOS.length?'done':''}">Тест</span>`;
+  const f=Object.values(S.found).reduce((s,x)=>s+x.size,0), all=PHOTOS.reduce((s,p)=>s+hotsOf(p),0);
+  $('sc').textContent = S.player ? `${S.player} · знайдено витоків: ${f}/${all}` : '';
+}
+
+function start(){
+  S=fresh(); head();
+  $('lay').innerHTML=`<div class="stage" style="grid-column:1/-1;max-width:720px;margin:0 auto">
+   <h2 style="margin:4px 0 8px;color:var(--acc)">Що приховує фото?</h2>
+   <p>Друзі збираються викласти три фото в соцмережу. Перевір кожне, перш ніж воно стане публічним:</p>
+   <p>🔍 <b>Знайди видимі витоки</b>: клацни на деталі зображення або підпису, які розкривають персональні дані.<br>🗂 <b>Очисти метадані</b>: файл зберігає «невидиму» інформацію EXIF. Познач, що треба видалити.</p>
+   <p class="muted">Зайві кліки по безпечних деталях не забирають балів, але рахуються.</p>
+   <label>Твоє ім’я та клас:<br><input type="text" id="pname" maxlength="40" placeholder="Напр.: Олександра Т., 11-А"></label>
+   <div class="row"><button class="btn primary" id="go">Відкрити перше фото</button></div></div>`;
+  $('go').onclick=()=>{ S.player=($('pname').value||'').trim()||'Гравець'; S.t0=Date.now(); S.i=0; photo(); };
+}
+
+function photo(){
+  head();
+  const p=PHOTOS[S.i], found=S.found[S.i]=S.found[S.i]||new Set(), del=new Set();
+  $('lay').innerHTML=`<div class="stage"><div class="post"><div class="ph"><i>${p.user[0].toUpperCase()}</i><b>${p.user}</b><span class="muted" style="margin-left:auto;font-size:12px">чернетка публікації</span></div>
+     <svg viewBox="0 0 640 400" id="svg">${p.svg}<g id="rings"></g></svg>
+     <div class="cap" id="cap">${esc(p.caption.text)}</div></div>
+     <p class="hint">Клацай на підозрілі деталі на фото та в підписі</p></div>
+   <div class="side">
+     <div class="box"><h3>Видимі витоки · <span id="fc"></span></h3><div class="meter"><i id="fm"></i></div><div class="found" id="fl"></div></div>
+     <div class="box"><h3>Властивості файлу (EXIF)</h3><table class="exif" id="ex"></table><p class="muted" style="font-size:12px;margin:6px 0 0">Натисни 🗑, щоб позначити поле для видалення.</p></div>
+     <div class="box" id="act"><button class="btn primary" id="pub" style="width:100%">✔ Перевірено — опублікувати</button></div>
+   </div>`;
+  const drawFound=()=>{
+    const all=hotsOf(p); $('fc').textContent=`${found.size}/${all}`; $('fm').style.width=(found.size/all*100)+'%';
+    const items=[...p.hot,...(p.caption.hot?[p.caption.hot]:[])].filter(h=>found.has(h.id));
+    $('fl').innerHTML=items.length?items.map(h=>`<div class="ok">✔ ${esc(h.t)}</div>`).join(''):'<span class="muted" style="font-size:13px">Поки нічого не знайдено.</span>';
+    $('rings').innerHTML=p.hot.filter(h=>found.has(h.id)).map(h=>`<ellipse class="ring" cx="${h.x+h.w/2}" cy="${h.y+h.h/2}" rx="${h.w/2+8}" ry="${h.h/2+8}"/>`).join('');
+    if(p.caption.hot && found.has(p.caption.hot.id)) $('cap').style.outline='3px dashed #ff3d3d';
+  };
+  const drawExif=()=>{ $('ex').innerHTML=p.exif.map((e,k)=>`<tr class="${del.has(k)?'del':''}"><td>${esc(e[0])}</td><td class="v">${esc(e[1])}</td><td><button class="bin ${del.has(k)?'on':''}" data-k="${k}">🗑</button></td></tr>`).join('');
+    document.querySelectorAll('.bin').forEach(b=>b.onclick=()=>{ const k=+b.dataset.k; del.has(k)?del.delete(k):del.add(k); drawExif(); }); };
+  $('svg').onclick=e=>{
+    const pt=$('svg').createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const q=pt.matrixTransform($('svg').getScreenCTM().inverse());
+    const h=p.hot.find(h=>q.x>=h.x&&q.x<=h.x+h.w&&q.y>=h.y&&q.y<=h.y+h.h);
+    if(h){ if(!found.has(h.id)){ found.add(h.id); toast('🎯 Знайдено витік!'); drawFound(); head(); } else toast('Це вже знайдено'); }
+    else { S.misses++; toast('Тут нічого небезпечного'); }
+  };
+  $('cap').onclick=()=>{ const h=p.caption.hot; if(h){ if(!found.has(h.id)){ found.add(h.id); toast('🎯 Знайдено витік у підписі!'); drawFound(); head(); } } else { S.misses++; toast('Підпис безпечний'); } };
+  drawFound(); drawExif();
+  $('pub').onclick=()=>{
+    let pts=0, max=0;
+    p.exif.forEach((e,k)=>{ const d=del.has(k); if(e[2]==='must'){ max+=10; if(d) pts+=10; } else if(e[2]==='keep'){ max+=5; if(!d) pts+=5; } });
+    S.exifPts[S.i]=pts; S.exifMax[S.i]=max;
+    $('svg').onclick=null; $('cap').onclick=null;
+    const missed=[...p.hot,...(p.caption.hot?[p.caption.hot]:[])].filter(h=>!found.has(h.id));
+    $('fl').innerHTML += missed.map(h=>`<div class="miss">✘ Пропущено: ${esc(h.t)}</div>`).join('');
+    $('rings').innerHTML += p.hot.filter(h=>!found.has(h.id)).map(h=>`<rect x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" fill="none" stroke="#ffc857" stroke-width="3"/>`).join('');
+    $('ex').innerHTML=p.exif.map((e,k)=>{ const d=del.has(k); const g=e[2]==='must'?d:e[2]==='keep'?!d:true; return `<tr class="${d?'del':''} ${e[2]==='opt'?'':g?'g':'w'}"><td>${esc(e[0])}</td><td class="v">${esc(e[1])}</td><td>${e[2]==='must'?'видалити':e[2]==='keep'?'безпечно':'на розсуд'}</td></tr>`; }).join('');
+    $('act').innerHTML=`<div class="fb ${pts===max&&!missed.length?'best':pts>=max/2?'ok':'bad'}" style="margin:0">Метадані: <b>${pts} з ${max}</b>. GPS-координати, ім’я автора й серійний номер пристрою видаляємо завжди. Дата зйомки — на розсуд: вона підказує розпорядок дня. Формат, розмір і модель — безпечні.</div>
+      <div class="row"><button class="btn primary" id="nx">${S.i+1<PHOTOS.length?'Наступне фото →':'До тесту →'}</button></div>`;
+    $('nx').onclick=()=>{ S.i++; S.i<PHOTOS.length?photo():quiz(0); window.scrollTo({top:0,behavior:'smooth'}); };
+  };
+}
+
+function quiz(k){
+  head();
+  if(k>=QUIZ.length){ S.i=PHOTOS.length+1; return finish(); }
+  const q=QUIZ[k];
+  $('lay').innerHTML=`<div class="stage" style="grid-column:1/-1;max-width:720px;margin:0 auto"><h2 style="margin:4px 0 8px;color:var(--acc)">Тест ${k+1} з ${QUIZ.length}</h2><p>${esc(q.q)}</p><div id="ch"></div><div id="fb"></div></div>`;
+  q.choices.map((c,i)=>i).sort(()=>Math.random()-.5).forEach(i=>{
+    const c=q.choices[i], b=document.createElement('button'); b.className='choice'; b.textContent=c.t;
+    b.onclick=()=>{ document.querySelectorAll('.choice').forEach(x=>x.disabled=true); b.classList.add('picked',c.kind); S.quiz[k]=c.kind;
+      $('fb').innerHTML=`<div class="fb ${c.kind}"><b>${c.kind==='best'?'✔ Правильно.':c.kind==='ok'?'≈ Частково.':'✘ Ні.'}</b> ${esc(c.why)}</div><div class="row"><button class="btn primary" id="nx">Далі →</button></div>`;
+      $('nx').onclick=()=>quiz(k+1); };
+    $('ch').appendChild(b);
+  });
+}
+
+function finish(){
+  head();
+  const f=Object.values(S.found).reduce((s,x)=>s+x.size,0), all=PHOTOS.reduce((s,p)=>s+hotsOf(p),0);
+  const ex=S.exifPts.reduce((a,b)=>a+b,0), exMax=S.exifMax.reduce((a,b)=>a+b,0);
+  const qz=S.quiz.reduce((s,k)=>s+(k==='best'?20:k==='ok'?10:0),0), qzMax=QUIZ.length*20;
+  const score=f*15+ex+qz, max=all*15+exMax+qzMax, pct=Math.round(score/max*100);
+  const chk=(score*47+S.player.length*31+f)%97, code=makeCode('ФТ',score,S.player);
+  const secs=Math.floor((Date.now()-S.t0)/1000), date=new Date().toLocaleString('uk-UA',{dateStyle:'medium',timeStyle:'short'});
+  const summary=`Що приховує фото — ${S.player}, ${date}\nВидимих витоків знайдено: ${f}/${all}; метадані: ${ex}/${exMax}; тест: ${qz}/${qzMax}; зайвих кліків: ${S.misses}\nБали: ${score} з ${max} (${pct}%); код: ${code}\nУчень: ${S.player}\nКод: ${code}`;
+  $('lay').innerHTML=`<div class="stage" style="grid-column:1/-1;max-width:720px;margin:0 auto">
+   <h2 style="margin:4px 0 8px;color:var(--acc)">${pct>=85?'🕵️ Око фотодетектива':pct>=60?'📷 Уважний фотограф':'⚠️ Фото розповідають про тебе забагато'}</h2>
+   <p><b>${esc(S.player)}</b> · ${date}</p>
+   <table class="res"><tr><td>Видимих витоків знайдено</td><td>${f} з ${all}</td></tr><tr><td>Очищення метаданих</td><td>${ex} з ${exMax}</td></tr><tr><td>Тест</td><td>${qz} з ${qzMax}</td></tr><tr><td>Зайвих кліків</td><td>${S.misses}</td></tr>
+    <tr><td>Час</td><td>${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</td></tr><tr><td><b>Рахунок</b></td><td>${score} з ${max} (${pct}%)</td></tr></table>
+   <p>Код результату для вчителя: <span class="code">${code}</span></p>
+   <p style="line-height:1.6">🗂 Растровий файл (JPEG, HEIC) зберігає не лише пікселі, а й метадані EXIF · 📍 GPS, автор і серійний номер — видаляй перед публікацією · 🏠 Адреси, документи, квитки, паролі на фото — розмивай або не знімай · ✈️ Про від’їзд пиши, коли вже повернувся · 👥 Чужі оцінки й обличчя — лише зі згоди.</p>
+   <div class="row"><button class="btn" id="copy">📋 Копіювати результат</button><button class="btn" id="prn">🖨 Друк / PDF</button><button class="btn primary" id="again">Ще раз</button></div></div>`;
+  $('copy').onclick=e=>{const b=e.target;try{navigator.clipboard.writeText(summary).then(()=>b.textContent='✅ Скопійовано',()=>b.textContent='Не вдалося скопіювати');}catch(err){b.textContent='Не вдалося скопіювати';}};
+  $('prn').onclick=()=>{try{window.print();}catch(e){}};
+  $('again').onclick=start;
+}
+
+start();
+</script>
+</body>
+</html>
